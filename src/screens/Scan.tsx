@@ -1,0 +1,276 @@
+import { useCallback, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useStore } from "../store";
+import { routeExtraction } from "../core/extraction/extractionRouter";
+import { buildMockResult, type MockSampleKey } from "../core/extraction/mockService";
+import type { ExtractionProgress, ExtractionResult } from "../core/extraction/extractionService";
+import { renderPdfThumbnail } from "../lib/pdfThumbnail";
+import { sampleImages } from "../data/sampleImages";
+import { formatTimer } from "../lib/format";
+import { useElapsed } from "../hooks/useElapsed";
+import { SOURCE_LABELS, type DocType } from "../core/types";
+import { IconFile, IconImage, IconUpload } from "../components/icons";
+
+const STAGE_TEXT: Record<ExtractionProgress["stage"], string> = {
+  loading: "Loading engine",
+  preprocessing: "Cleaning up the image",
+  recognizing: "Reading text",
+  parsing: "Structuring fields",
+  done: "Done",
+};
+
+function guessDocType(result: ExtractionResult): DocType {
+  const t = result.rawText.toLowerCase();
+  if (/abwicklungsschein|vat relief|sofa/.test(t)) return "vat_form";
+  if (result.source === "pdf_text") {
+    if (/invoice|rechnung/.test(t)) return "invoice";
+    if (/quote|quotation|angebot/.test(t)) return "quote";
+    return "invoice";
+  }
+  return "receipt";
+}
+
+const SAMPLES: { key: MockSampleKey; label: string; docType: DocType }[] = [
+  { key: "thermal_us", label: "US thermal receipt", docType: "receipt" },
+  { key: "german_vat", label: "German EUR receipt", docType: "receipt" },
+  { key: "vendor_quote", label: "Vendor quote (PDF)", docType: "quote" },
+  { key: "vat_form", label: "Handwritten VAT form", docType: "vat_form" },
+];
+
+export function Scan() {
+  const navigate = useNavigate();
+  const { setDraft } = useStore();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [isPdf, setIsPdf] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [progress, setProgress] = useState<ExtractionProgress | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+
+  const elapsed = useElapsed(startedAt, working);
+
+  const onFiles = useCallback(async (f: File | null) => {
+    if (!f) return;
+    setError(null);
+    setFile(f);
+    const pdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+    setIsPdf(pdf);
+
+    if (pdf) {
+      setPreviewUrl(null);
+      try {
+        const thumb = await renderPdfThumbnail(f);
+        if (thumb) {
+          setPreviewBlob(thumb);
+          setPreviewUrl(URL.createObjectURL(thumb));
+        } else {
+          setPreviewBlob(f);
+        }
+      } catch {
+        setPreviewBlob(f);
+      }
+    } else {
+      setPreviewBlob(f);
+      setPreviewUrl(URL.createObjectURL(f));
+    }
+  }, []);
+
+  const extract = useCallback(async () => {
+    if (!file) return;
+    setWorking(true);
+    setError(null);
+    setProgress({ stage: "loading", progress: 0 });
+    const begin = Date.now();
+    setStartedAt(begin);
+
+    try {
+      const result = await routeExtraction(
+        { blob: file, mimeType: file.type, fileName: file.name },
+        setProgress,
+      );
+      setDraft({
+        fields: result.fields,
+        rawText: result.rawText,
+        lineItems: result.lineItems,
+        source: result.source,
+        confidence: result.confidence,
+        imageUri: previewUrl ?? "",
+        imageBlob: previewUrl ? previewBlob : null,
+        docType: guessDocType(result),
+        captureStartedAt: begin,
+      });
+      navigate("/review");
+    } catch (err) {
+      setWorking(false);
+      setError(err instanceof Error ? err.message : "Extraction failed. Please try another file.");
+    }
+  }, [file, previewUrl, previewBlob, setDraft, navigate]);
+
+  const onSample = useCallback(
+    (key: MockSampleKey, docType: DocType) => {
+      const begin = Date.now();
+      const result = buildMockResult(key);
+      setDraft({
+        fields: result.fields,
+        rawText: result.rawText,
+        lineItems: result.lineItems,
+        source: result.source,
+        confidence: result.confidence,
+        imageUri: sampleImages[key],
+        imageBlob: null,
+        docType,
+        captureStartedAt: begin,
+      });
+      navigate("/review");
+    },
+    [setDraft, navigate],
+  );
+
+  return (
+    <div className="stack" style={{ gap: "var(--s5)" }}>
+      <div className="page-head">
+        <div className="eyebrow">Step 1 of 2</div>
+        <h1>Scan or upload a document</h1>
+        <p className="sub">
+          Images run through preprocessing + in-browser OCR; native PDFs are read straight from
+          their text layer (no OCR). Everything happens on this device.
+        </p>
+      </div>
+
+      {!file ? (
+        <>
+          <div
+            className={`dropzone ${dragging ? "drag" : ""}`}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              onFiles(e.dataTransfer.files?.[0] ?? null);
+            }}
+          >
+            <div className="row" style={{ justifyContent: "center", marginBottom: "var(--s3)", color: "var(--text-muted)" }}>
+              <IconUpload width={26} height={26} />
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 600 }}>Drop a receipt, invoice, or PDF here</div>
+            <div className="muted" style={{ marginTop: 6, fontSize: 14 }}>
+              or click to browse · JPG, PNG, or PDF
+            </div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              capture="environment"
+              hidden
+              onChange={(e) => onFiles(e.target.files?.[0] ?? null)}
+            />
+          </div>
+
+          <div>
+            <div className="eyebrow" style={{ marginBottom: "var(--s3)" }}>
+              Or try a sample document
+            </div>
+            <div className="row wrap">
+              {SAMPLES.map((s) => (
+                <button key={s.key} className="btn btn-sm" onClick={() => onSample(s.key, s.docType)}>
+                  {s.key === "vendor_quote" ? <IconFile width={14} height={14} /> : <IconImage width={14} height={14} />}
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="card">
+          <div className="grid cols-2" style={{ alignItems: "start" }}>
+            <div>
+              {previewUrl ? (
+                <img src={previewUrl} className="preview-img" alt="Document preview" />
+              ) : (
+                <div className="preview-img row" style={{ justifyContent: "center", flexDirection: "column", gap: "var(--s2)", minHeight: 240 }}>
+                  <IconFile width={32} height={32} />
+                  <span className="muted">Preparing preview…</span>
+                </div>
+              )}
+            </div>
+
+            <div className="stack">
+              <div>
+                <div className="row" style={{ gap: "var(--s2)" }}>
+                  {isPdf ? <IconFile /> : <IconImage />}
+                  <span style={{ fontWeight: 600, wordBreak: "break-all" }}>{file.name}</span>
+                </div>
+                <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
+                  {isPdf
+                    ? "PDF — will try the text layer first (no OCR)."
+                    : "Image — will run preprocessing + Tesseract OCR."}
+                </div>
+              </div>
+
+              {working && progress && (
+                <div className="stack" style={{ gap: "var(--s2)" }}>
+                  <div className="row">
+                    <span className="readout" style={{ fontSize: 13 }}>
+                      {STAGE_TEXT[progress.stage]}
+                      {progress.message ? ` · ${progress.message}` : ""}
+                    </span>
+                    <div className="spacer" />
+                    <span className="readout" style={{ color: "var(--accent-text)" }}>{formatTimer(elapsed)}</span>
+                  </div>
+                  <div className="progress">
+                    <span
+                      style={{
+                        width: `${Math.round(
+                          (progress.stage === "recognizing" ? progress.progress : progress.stage === "parsing" ? 1 : 0.15) * 100,
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    Reading happens locally — the document never leaves your browser.
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div style={{ color: "var(--danger)", fontSize: 14 }}>{error}</div>
+              )}
+
+              {!working && (
+                <div className="row wrap" style={{ marginTop: "var(--s2)" }}>
+                  <button className="btn btn-primary" onClick={extract}>
+                    Extract
+                  </button>
+                  <button
+                    className="btn btn-ghost"
+                    onClick={() => {
+                      setFile(null);
+                      setPreviewUrl(null);
+                      setPreviewBlob(null);
+                      setError(null);
+                    }}
+                  >
+                    Choose another
+                  </button>
+                </div>
+              )}
+
+              <div className="muted" style={{ fontSize: 12, marginTop: "var(--s2)" }}>
+                Engine routing: {SOURCE_LABELS.pdf_text} → {SOURCE_LABELS.tesseract} → {SOURCE_LABELS.mock}.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

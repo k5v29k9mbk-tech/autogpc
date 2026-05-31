@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/mkara/Downloads/**)",
+      "Bash(npm --version)",
+      "Bash(git --version)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 4317 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $c.OwningProcess | Sort-Object -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force; \"stopped PID $_\" } catch {} } } else { \"no listener on 4317\" })",
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 4318 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { $c.OwningProcess | Sort-Object -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force; \"stopped PID $_\" } catch {} } } else { \"no listener\" })",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}
