@@ -758,3 +758,293 @@ details.collapsible[open] summary::before {
     animation: none;
   }
 }
+
+/* ============================================================================
+   Auth — sign-in / create-account / confirmation. Reuses the design spine:
+   warm charcoal surfaces, cream primary action, green for success only,
+   muted clay for errors.
+   ========================================================================== */
+
+/* Full-screen, centered shell for the pre-app auth screens. */
+.auth-shell {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s6) var(--s5);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: var(--s6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  justify-content: center;
+  margin-bottom: var(--s5);
+}
+
+.auth-brand .wordmark {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  padding-left: 2px;
+}
+
+.auth-head {
+  text-align: center;
+  margin-bottom: var(--s5);
+}
+
+.auth-head h1 {
+  font-size: 22px;
+}
+
+.auth-head .sub {
+  color: var(--text-muted);
+  margin-top: var(--s2);
+  font-size: 14px;
+}
+
+.auth-foot {
+  margin-top: var(--s5);
+  text-align: center;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.auth-foot a,
+.linkish {
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.linkish:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.btn-block {
+  width: 100%;
+}
+
+/* Divider with a centered label ("or"). */
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  color: var(--text-faint);
+  font-size: 12px;
+  margin: var(--s5) 0;
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Input with a trailing affordance (password reveal toggle). */
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap .input {
+  padding-right: 42px;
+}
+
+.input-affix {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.input-affix:hover {
+  color: var(--text-muted);
+}
+
+.input-affix:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.input.invalid,
+.textarea.invalid {
+  border-color: var(--danger);
+}
+
+/* Inline field-level error text. */
+.field-error {
+  font-size: 12.5px;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Form-level banners (error / success / info). */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  font-size: 13.5px;
+  line-height: 1.45;
+  border-radius: var(--r-input);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.alert svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+.alert-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: #54322d;
+}
+
+.alert-success {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: #3a4a3c;
+}
+
+.alert .alert-action {
+  margin-top: var(--s2);
+}
+
+/* Password strength meter. */
+.pw-meter {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.pw-meter span {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  transition: background 0.15s;
+}
+
+.pw-meter[data-strength="weak"] span:nth-child(-n + 1),
+.pw-meter[data-strength="fair"] span:nth-child(-n + 2),
+.pw-meter[data-strength="strong"] span:nth-child(-n + 3) {
+  background: var(--accent);
+}
+
+.pw-meter[data-strength="weak"] span:nth-child(-n + 1) {
+  background: var(--danger);
+}
+
+.pw-meter[data-strength="fair"] span:nth-child(-n + 2) {
+  background: #d8b487;
+}
+
+.pw-hint {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+/* Spinner for in-flight submits. */
+.spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2s;
+  }
+}
+
+/* Guest-mode banner — deliberately loud so it can't be mistaken for an account. */
+.guest-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  background: var(--danger-soft);
+  border-bottom: 1px solid #54322d;
+  color: var(--danger);
+  font-size: 13px;
+  padding: var(--s2) var(--s5);
+}
+
+.guest-banner .container {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 0;
+}
+
+.guest-banner strong {
+  color: var(--text);
+}
+
+/* Compact account chip + menu in the top nav. */
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 13px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  padding: 5px var(--s3);
+  max-width: 220px;
+}
+
+.account-chip .who {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
