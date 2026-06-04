@@ -1,9 +1,9 @@
 // The extraction abstraction — the seam that makes the engine swappable.
 //
-// Every provider (pdf-text, Tesseract, mock, and the future cloud extractor)
+// Every extraction source (pdf-text, Tesseract, and the cloud extractor)
 // implements this one interface, so the UI never knows or cares which engine
-// produced a result. Sprint 2 can drop a cloud extractor in behind the same
-// `extract()` signature without touching a single screen.
+// produced a result. The cloud source drops in behind the same `extract()`
+// signature without touching a single screen.
 //
 // UI-free and platform-agnostic on purpose.
 

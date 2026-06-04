@@ -2,13 +2,12 @@ import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store";
 import { routeExtraction } from "../core/extraction/extractionRouter";
-import { buildMockResult, type MockSampleKey } from "../core/extraction/mockService";
-import type { ExtractionProgress, ExtractionResult } from "../core/extraction/extractionService";
+import { draftFromResult } from "../core/draft";
+import type { ExtractionProgress } from "../core/extraction/extractionService";
 import { renderPdfThumbnail } from "../lib/pdfThumbnail";
-import { sampleImages } from "../data/sampleImages";
 import { formatTimer } from "../lib/format";
 import { useElapsed } from "../hooks/useElapsed";
-import { SOURCE_LABELS, type DocType } from "../core/types";
+import { SOURCE_LABELS } from "../core/types";
 import { IconFile, IconImage, IconUpload } from "../components/icons";
 
 const STAGE_TEXT: Record<ExtractionProgress["stage"], string> = {
@@ -18,24 +17,6 @@ const STAGE_TEXT: Record<ExtractionProgress["stage"], string> = {
   parsing: "Structuring fields",
   done: "Done",
 };
-
-function guessDocType(result: ExtractionResult): DocType {
-  const t = result.rawText.toLowerCase();
-  if (/abwicklungsschein|vat relief|sofa/.test(t)) return "vat_form";
-  if (result.source === "pdf_text") {
-    if (/invoice|rechnung/.test(t)) return "invoice";
-    if (/quote|quotation|angebot/.test(t)) return "quote";
-    return "invoice";
-  }
-  return "receipt";
-}
-
-const SAMPLES: { key: MockSampleKey; label: string; docType: DocType }[] = [
-  { key: "thermal_us", label: "US thermal receipt", docType: "receipt" },
-  { key: "german_vat", label: "German EUR receipt", docType: "receipt" },
-  { key: "vendor_quote", label: "Vendor quote (PDF)", docType: "quote" },
-  { key: "vat_form", label: "Handwritten VAT form", docType: "vat_form" },
-];
 
 export function Scan() {
   const navigate = useNavigate();
@@ -93,43 +74,19 @@ export function Scan() {
         { blob: file, mimeType: file.type, fileName: file.name },
         setProgress,
       );
-      setDraft({
-        fields: result.fields,
-        rawText: result.rawText,
-        lineItems: result.lineItems,
-        source: result.source,
-        confidence: result.confidence,
-        imageUri: previewUrl ?? "",
-        imageBlob: previewUrl ? previewBlob : null,
-        docType: guessDocType(result),
-        captureStartedAt: begin,
-      });
+      setDraft(
+        draftFromResult(result, {
+          imageUri: previewUrl ?? "",
+          imageBlob: previewUrl ? previewBlob : null,
+          captureStartedAt: begin,
+        }),
+      );
       navigate("/review");
     } catch (err) {
       setWorking(false);
       setError(err instanceof Error ? err.message : "Extraction failed. Please try another file.");
     }
   }, [file, previewUrl, previewBlob, setDraft, navigate]);
-
-  const onSample = useCallback(
-    (key: MockSampleKey, docType: DocType) => {
-      const begin = Date.now();
-      const result = buildMockResult(key);
-      setDraft({
-        fields: result.fields,
-        rawText: result.rawText,
-        lineItems: result.lineItems,
-        source: result.source,
-        confidence: result.confidence,
-        imageUri: sampleImages[key],
-        imageBlob: null,
-        docType,
-        captureStartedAt: begin,
-      });
-      navigate("/review");
-    },
-    [setDraft, navigate],
-  );
 
   return (
     <div className="stack" style={{ gap: "var(--s5)" }}>
@@ -143,52 +100,36 @@ export function Scan() {
       </div>
 
       {!file ? (
-        <>
-          <div
-            className={`dropzone ${dragging ? "drag" : ""}`}
-            onClick={() => inputRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragging(false);
-              onFiles(e.dataTransfer.files?.[0] ?? null);
-            }}
-          >
-            <div className="row" style={{ justifyContent: "center", marginBottom: "var(--s3)", color: "var(--text-muted)" }}>
-              <IconUpload width={26} height={26} />
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 600 }}>Drop a receipt, invoice, or PDF here</div>
-            <div className="muted" style={{ marginTop: 6, fontSize: 14 }}>
-              or click to browse · JPG, PNG, or PDF
-            </div>
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              capture="environment"
-              hidden
-              onChange={(e) => onFiles(e.target.files?.[0] ?? null)}
-            />
+        <div
+          className={`dropzone ${dragging ? "drag" : ""}`}
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            onFiles(e.dataTransfer.files?.[0] ?? null);
+          }}
+        >
+          <div className="row" style={{ justifyContent: "center", marginBottom: "var(--s3)", color: "var(--text-muted)" }}>
+            <IconUpload width={26} height={26} />
           </div>
-
-          <div>
-            <div className="eyebrow" style={{ marginBottom: "var(--s3)" }}>
-              Or try a sample document
-            </div>
-            <div className="row wrap">
-              {SAMPLES.map((s) => (
-                <button key={s.key} className="btn btn-sm" onClick={() => onSample(s.key, s.docType)}>
-                  {s.key === "vendor_quote" ? <IconFile width={14} height={14} /> : <IconImage width={14} height={14} />}
-                  {s.label}
-                </button>
-              ))}
-            </div>
+          <div style={{ fontSize: 16, fontWeight: 600 }}>Drop a receipt, invoice, or PDF here</div>
+          <div className="muted" style={{ marginTop: 6, fontSize: 14 }}>
+            or click to browse · JPG, PNG, or PDF
           </div>
-        </>
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            capture="environment"
+            hidden
+            onChange={(e) => onFiles(e.target.files?.[0] ?? null)}
+          />
+        </div>
       ) : (
         <div className="card">
           <div className="grid cols-2" style={{ alignItems: "start" }}>
@@ -265,7 +206,7 @@ export function Scan() {
               )}
 
               <div className="muted" style={{ fontSize: 12, marginTop: "var(--s2)" }}>
-                Engine routing: {SOURCE_LABELS.pdf_text} → {SOURCE_LABELS.tesseract} → {SOURCE_LABELS.mock}.
+                Engine routing: {SOURCE_LABELS.pdf_text} → {SOURCE_LABELS.tesseract}.
               </div>
             </div>
           </div>

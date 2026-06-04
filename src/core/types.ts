@@ -22,9 +22,10 @@ export type RecordStatus =
   | "ready_for_entry"
   | "exported";
 
-// Sprint 1 uses pdf_text | tesseract | mock. "cloud" is reserved for the
-// upgrade tier (see core/extraction/cloudExtractionService.ts).
-export type ExtractionSource = "pdf_text" | "tesseract" | "mock" | "cloud";
+// pdf_text and tesseract run in-browser today. "cloud" is reserved for the
+// upgrade tier — a server-side API (AWS Textract AnalyzeExpense) behind the
+// same ExtractionService seam (see core/extraction/cloudExtractionService.ts).
+export type ExtractionSource = "pdf_text" | "tesseract" | "cloud";
 
 export type DocType = "receipt" | "invoice" | "quote" | "vat_form" | "other";
 
@@ -76,7 +77,6 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
 export const SOURCE_LABELS: Record<ExtractionSource, string> = {
   pdf_text: "PDF text layer",
   tesseract: "OCR (Tesseract)",
-  mock: "Sample data",
   cloud: "Cloud extractor",
 };
 

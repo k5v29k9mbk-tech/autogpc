@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { newId, useStore } from "../store";
+import { recordFromDraft, type RecordEdits } from "../core/draft";
 import { useElapsed } from "../hooks/useElapsed";
 import { Field, SourceTag } from "../components/ui";
 import { IconCheck, IconClock, IconTrash } from "../components/icons";
@@ -10,41 +11,16 @@ import {
   MANUAL_BASELINE_SECONDS,
   STATUS_LABELS,
   STATUS_ORDER,
-  emptyChecklist,
   type DocType,
-  type DocumentChecklist,
   type LineItem,
-  type PurchaseRecord,
   type RecordStatus,
 } from "../core/types";
 
-type Form = {
-  vendor: string;
-  transactionDate: string;
-  totalAmount: string;
-  currency: string;
-  taxAmount: string;
-  cardLast4: string;
-  receiptNumber: string;
-  invoiceNumber: string;
-  notes: string;
-  status: RecordStatus;
-  docType: DocType;
-  lineItems: LineItem[];
-};
+// The review form is exactly the set of fields a reviewer confirms before save.
+type Form = RecordEdits;
 
 const CURRENCIES = ["", "USD", "EUR", "GBP"];
 const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as DocType[];
-
-function checklistForDocType(docType: DocType): DocumentChecklist {
-  const c = emptyChecklist();
-  if (docType === "receipt") c.receiptUploaded = true;
-  else if (docType === "invoice") c.invoiceUploaded = true;
-  else if (docType === "quote") c.quoteUploaded = true;
-  else if (docType === "vat_form") c.approvalDocUploaded = true;
-  else c.otherDocsUploaded = true;
-  return c;
-}
 
 export function Review() {
   const { draft, setDraft, addRecord } = useStore();
@@ -90,34 +66,11 @@ export function Review() {
     }));
 
   const save = async () => {
-    const seconds = Math.round((Date.now() - draft.captureStartedAt) / 1000);
-    const now = new Date().toISOString();
     const id = newId();
-    const record: PurchaseRecord = {
-      id,
-      vendor: form.vendor.trim(),
-      transactionDate: form.transactionDate.trim(),
-      totalAmount: form.totalAmount.trim(),
-      currency: form.currency.trim(),
-      taxAmount: form.taxAmount.trim() || null,
-      cardLast4: form.cardLast4.trim() || null,
-      receiptNumber: form.receiptNumber.trim() || null,
-      invoiceNumber: form.invoiceNumber.trim() || null,
-      lineItems: form.lineItems,
-      notes: form.notes,
-      rawOcrText: draft.rawText,
-      imageUri: draft.imageUri,
-      status: form.status,
-      documentChecklist: checklistForDocType(form.docType),
-      captureSeconds: seconds,
-      source: draft.source,
-      docType: form.docType,
-      createdAt: now,
-      updatedAt: now,
-    };
+    const record = recordFromDraft(draft, form, { id, finishedAt: Date.now() });
     await addRecord(record, draft.imageBlob);
     setDraft(null);
-    setSaved({ seconds, id });
+    setSaved({ seconds: record.captureSeconds ?? 0, id });
   };
 
   if (saved) {
