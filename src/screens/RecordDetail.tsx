@@ -6,6 +6,7 @@ import { DocTypeTag, Field, SourceTag, StatusBadge } from "../components/ui";
 import { IconArrowLeft, IconCheck, IconCopy, IconDownload, IconTrash } from "../components/icons";
 import { formatAmount, formatDuration, formatTimer, orDash } from "../lib/format";
 import { documentsMissing, documentsPresent, toJson, toStructuredText } from "../lib/exportRecord";
+import { USBANK_ENABLED, UsBankOrderCard } from "../components/UsBankOrderCard";
 import { savedSecondsFor } from "../lib/timeSaved";
 import {
   DOC_TYPE_LABELS,
@@ -268,6 +269,9 @@ export function RecordDetail() {
           <button className="btn btn-sm" disabled={record.status === "exported"} onClick={() => setStatus("exported")}>Mark exported</button>
         </div>
       </div>
+
+      {/* US Bank order handoff */}
+      {USBANK_ENABLED && <UsBankOrderCard record={record} />}
 
       {/* Export / summary */}
       <div className="card">
