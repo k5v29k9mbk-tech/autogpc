@@ -22,6 +22,7 @@ import {
   type ExtractionService,
   type ProgressCallback,
 } from "./extractionService";
+import { renderPdfThumbnail } from "../../lib/pdfThumbnail";
 import type { LineItem, PurchaseRecord } from "../types";
 
 /** Shape the /api/extract function returns (source is attached client-side). */
@@ -84,10 +85,25 @@ export const cloudExtractionService: ExtractionService = {
   async extract(input: ExtractionInput, onProgress?: ProgressCallback): Promise<ExtractionResult> {
     onProgress?.({ stage: "recognizing", progress: 0.2, message: "Cloud extraction" });
 
-    const asImage = isImage(input);
-    const toSend = asImage ? await compressForUpload(input.blob) : input.blob;
+    // Always send Textract an image: compress photos, and rasterize page 1 of a
+    // (scanned) PDF to a JPEG so it reads well and the upload stays small. Fall
+    // back to raw single-page PDF bytes only if rasterizing fails.
+    let toSend = input.blob;
+    let mimeType = input.mimeType || "application/octet-stream";
+    if (isImage(input)) {
+      toSend = await compressForUpload(input.blob);
+      mimeType = "image/jpeg";
+    } else if (isPdf(input)) {
+      const raster = await renderPdfThumbnail(input.blob, 2);
+      if (raster) {
+        toSend = await compressForUpload(raster);
+        mimeType = "image/jpeg";
+      } else {
+        mimeType = "application/pdf";
+      }
+    }
+
     const fileBase64 = await blobToBase64(toSend);
-    const mimeType = asImage ? "image/jpeg" : input.mimeType || "application/pdf";
 
     const res = await fetch("/api/extract", {
       method: "POST",
