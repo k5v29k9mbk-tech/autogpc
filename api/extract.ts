@@ -17,7 +17,19 @@ import {
   type ExpenseDocument,
 } from "@aws-sdk/client-textract";
 
-const client = new TextractClient({ region: process.env.AWS_REGION });
+// Vercel runs functions on AWS Lambda, which RESERVES the env names AWS_REGION,
+// AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY for its own runtime — setting
+// those in Vercel can be ignored or overridden by the function's execution
+// role (showing up as a confusing 403). So we read TEXTRACT_*-prefixed vars and
+// pass credentials explicitly, falling back to AWS_* / the default provider
+// chain for local dev or non-Lambda hosts.
+const accessKeyId = process.env.TEXTRACT_ACCESS_KEY_ID;
+const secretAccessKey = process.env.TEXTRACT_SECRET_ACCESS_KEY;
+const client = new TextractClient({
+  region: process.env.TEXTRACT_REGION ?? process.env.AWS_REGION,
+  credentials:
+    accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined,
+});
 
 type LineItem = {
   description: string;
