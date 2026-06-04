@@ -145,8 +145,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const out = await client.send(new AnalyzeExpenseCommand({ Document: { Bytes: bytes } }));
     res.status(200).json(mapAnalyzeExpense(out));
   } catch (err) {
-    // Never echo the document or credentials back.
-    console.error("AnalyzeExpense failed:", err instanceof Error ? err.message : err);
-    res.status(502).json({ error: "Cloud extraction failed" });
+    // Surface the AWS error NAME + message (safe — no document or credentials)
+    // so the browser console shows the real cause, e.g. AccessDeniedException.
+    const name = err instanceof Error ? err.name : "Error";
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("AnalyzeExpense failed:", name, message);
+    res.status(502).json({ error: "Cloud extraction failed", name, message });
   }
 }
