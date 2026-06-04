@@ -94,7 +94,18 @@ export const cloudExtractionService: ExtractionService = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileBase64, mimeType }),
     });
-    if (!res.ok) throw new Error(`Cloud extraction failed (${res.status})`);
+    if (!res.ok) {
+      if (res.status === 404) {
+        // The serverless function isn't being served — almost always plain
+        // `vite dev` (which doesn't run /api). Use `vercel dev` or the deployed
+        // site to exercise the cloud path.
+        throw new Error(
+          "cloud: /api/extract returned 404 — the serverless function isn't running (use `vercel dev` or the deployed site).",
+        );
+      }
+      const detail = await res.text().catch(() => "");
+      throw new Error(`cloud: /api/extract failed (${res.status}) ${detail}`.trim());
+    }
     const cloud = (await res.json()) as CloudResponse;
 
     onProgress?.({ stage: "parsing", progress: 1 });

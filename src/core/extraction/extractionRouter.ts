@@ -39,8 +39,8 @@ export async function routeExtraction(
       if (CLOUD_ENABLED) {
         try {
           return await cloudExtractionService.extract(input, onProgress);
-        } catch {
-          /* fall through to the message below */
+        } catch (cloudErr) {
+          console.warn("[extraction] cloud failed on scanned PDF, no local fallback:", cloudErr);
         }
       }
       throw new Error(
@@ -55,8 +55,8 @@ export async function routeExtraction(
     if (CLOUD_ENABLED) {
       try {
         return await cloudExtractionService.extract(input, onProgress);
-      } catch {
-        /* fall back to in-browser Tesseract */
+      } catch (cloudErr) {
+        console.warn("[extraction] cloud failed, falling back to Tesseract:", cloudErr);
       }
     }
     try {
