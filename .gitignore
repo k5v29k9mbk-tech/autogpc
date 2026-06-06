@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-ssr
+*.local
+.vercel
+.DS_Store
+.idea
+*.log
+
+# Claude Code local (personal) settings — keep shared .claude/ config trackable
+.claude/settings.local.json

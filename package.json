@@ -1,0 +1,35 @@
+{
+  "name": "nexus",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Nexus — receipt OCR + field extraction for GPC cardholders. Sprint 1 persuasion demo (client-side only).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.app.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen:logo": "node scripts/gen-logo.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-textract": "^3.1061.0",
+    "@supabase/supabase-js": "^2.106.2",
+    "pdfjs-dist": "^4.7.76",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@vercel/node": "^5.8.12",
+    "@vitejs/plugin-react": "^4.3.2",
+    "jimp": "^0.22.12",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.2"
+  }
+}
