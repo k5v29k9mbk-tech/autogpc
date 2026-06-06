@@ -56,12 +56,13 @@ export function Layout() {
           )}
 
           <button
-            className="btn btn-sm btn-ghost"
+            className="btn btn-sm btn-ghost signout"
             onClick={handleSignOut}
             title={mode === "guest" ? "Exit guest mode" : "Sign out"}
+            aria-label={mode === "guest" ? "Exit guest mode" : "Sign out"}
           >
             <IconLogOut width={15} height={15} />
-            {mode === "guest" ? "Exit guest" : "Sign out"}
+            <span className="btn-label">{mode === "guest" ? "Exit guest" : "Sign out"}</span>
           </button>
         </div>
       </header>

@@ -1323,6 +1323,62 @@ details.collapsible[open] summary::before {
   white-space: nowrap;
 }
 
+/* --- Responsive nav -------------------------------------------------------- */
+
+/* Tablet & below: slim the top bar so it stops overflowing — sign-out becomes
+   icon-only and the redundant chips (email / "Guest") drop out. Guest state is
+   still shown by the full-width GuestBanner above the nav. */
+@media (max-width: 900px) {
+  .nav-inner {
+    gap: var(--s4);
+  }
+  .signout .btn-label {
+    display: none;
+  }
+  .signout {
+    padding: 8px;
+  }
+  .account-chip .who,
+  .trust-chip {
+    display: none;
+  }
+}
+
+/* Phone: move the primary links (Home / Scan / Records) into a fixed bottom tab
+   bar; the top bar keeps brand + account + sign-out, which fits comfortably. */
+@media (max-width: 640px) {
+  .nav-links {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    margin: 0;
+    gap: 0;
+    justify-content: space-around;
+    background: rgba(11, 12, 11, 0.92);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    padding: var(--s2) var(--s3);
+    padding-bottom: calc(var(--s2) + env(safe-area-inset-bottom, 0px));
+  }
+  .nav-link {
+    flex: 1;
+    text-align: center;
+    padding: var(--s3) 2px;
+    font-size: 12px;
+  }
+  /* active indicator reads better on the top edge of the bottom bar */
+  .nav-link.active::after {
+    top: -3px;
+    bottom: auto;
+  }
+  /* keep page content clear of the fixed bottom bar */
+  .main {
+    padding-bottom: calc(var(--s7) + 56px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* ============================================================================
    Marketing site (Landing) — "Calm Authority", Awwwards-grade craft.
    Reuses the app's tokens: warm charcoal, IBM Plex, ONE restrained green
