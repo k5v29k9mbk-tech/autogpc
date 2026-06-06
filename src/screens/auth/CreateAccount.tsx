@@ -11,11 +11,23 @@ import { IconMail } from "../../components/icons";
 import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./authShared";
 
 export function CreateAccount() {
-  const { signUp, resendConfirmation, continueAsGuest, configured } = useAuth();
+  const { signUp, signInWithOAuth, resendConfirmation, continueAsGuest, configured } = useAuth();
   const navigate = useNavigate();
   const emailId = useId();
   const pwId = useId();
   const confirmId = useId();
+  const [googleBusy, setGoogleBusy] = useState(false);
+
+  const goGoogle = async () => {
+    setFormError(null);
+    setGoogleBusy(true);
+    try {
+      await signInWithOAuth("google");
+    } catch (err) {
+      setGoogleBusy(false);
+      setFormError(err instanceof AuthError ? err.message : "Could not start Google sign-in.");
+    }
+  };
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -213,7 +225,7 @@ export function CreateAccount() {
         </button>
       </form>
 
-      <ProviderSeams />
+      <ProviderSeams onGoogle={configured ? goGoogle : undefined} busy={googleBusy} />
 
       <div className="auth-or">or</div>
       <button

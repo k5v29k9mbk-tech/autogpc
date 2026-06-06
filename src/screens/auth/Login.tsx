@@ -5,10 +5,11 @@ import { validateEmail } from "../../lib/validation";
 import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./authShared";
 
 export function Login() {
-  const { login, resendConfirmation, continueAsGuest, configured } = useAuth();
+  const { login, signInWithOAuth, resendConfirmation, continueAsGuest, configured } = useAuth();
   const navigate = useNavigate();
   const emailId = useId();
   const pwId = useId();
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,6 +64,18 @@ export function Login() {
   const goGuest = () => {
     continueAsGuest();
     navigate("/", { replace: true });
+  };
+
+  const goGoogle = async () => {
+    setFormError(null);
+    setGoogleBusy(true);
+    try {
+      // On success the page redirects to Google, so control doesn't return here.
+      await signInWithOAuth("google");
+    } catch (err) {
+      setGoogleBusy(false);
+      setFormError(err instanceof AuthError ? err.message : "Could not start Google sign-in.");
+    }
   };
 
   return (
@@ -147,7 +160,7 @@ export function Login() {
         </button>
       </form>
 
-      <ProviderSeams />
+      <ProviderSeams onGoogle={configured ? goGoogle : undefined} busy={googleBusy} />
 
       <div className="auth-or">or</div>
       <button type="button" className="btn btn-ghost btn-block" onClick={goGuest}>

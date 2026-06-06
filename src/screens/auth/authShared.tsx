@@ -121,12 +121,21 @@ export function PasswordInput({
 }
 
 /**
- * Future-provider seams. Rendered but disabled this sprint.
- *   (a) Google  — Supabase signInWithOAuth (enable later in the dashboard).
+ * Provider seams below the email/password form.
+ *   (a) Google  — live via Supabase signInWithOAuth when `onGoogle` is passed
+ *       (and the provider is enabled in the dashboard). Disabled otherwise.
  *   (b) CAC/PIV — server-side mutual TLS + DoD cert-chain at the proxy; never
  *       through Supabase. Placeholder only.
  */
-export function ProviderSeams() {
+export function ProviderSeams({
+  onGoogle,
+  busy,
+}: {
+  /** When provided, the Google button is live and calls this on click. */
+  onGoogle?: () => void;
+  /** Disable the button while a redirect is in flight. */
+  busy?: boolean;
+}) {
   return (
     <>
       <div className="auth-or">or</div>
@@ -134,15 +143,22 @@ export function ProviderSeams() {
         <button
           type="button"
           className="btn btn-block"
-          disabled
-          aria-disabled="true"
-          title="Google sign-in is planned but not enabled this sprint."
+          onClick={onGoogle}
+          disabled={!onGoogle || busy}
+          aria-disabled={!onGoogle || busy ? "true" : undefined}
+          title={
+            onGoogle
+              ? "Continue with your Google account"
+              : "Google sign-in isn't enabled yet."
+          }
         >
           <IconGoogle />
-          Continue with Google
-          <span className="tag" style={{ marginLeft: "auto" }}>
-            soon
-          </span>
+          {busy ? "Redirecting to Google…" : "Continue with Google"}
+          {!onGoogle && (
+            <span className="tag" style={{ marginLeft: "auto" }}>
+              soon
+            </span>
+          )}
         </button>
         <button
           type="button"

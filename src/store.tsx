@@ -1,6 +1,9 @@
 // App store: records + the transient review draft, persisted through the
-// portable RecordStore. UI state lives here; everything it calls is engine-
-// and platform-agnostic underneath.
+// portable RecordStore. The active store depends on who's using the app:
+//   - authenticated -> supabaseStore (Postgres + Storage, per-user via RLS)
+//   - guest / gate  -> webStorage    (this browser only, never uploaded)
+// Records re-load whenever the session changes, so signing in surfaces the
+// account's cloud records and signing out drops back to local.
 
 import {
   createContext,
@@ -8,10 +11,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useAuth } from "./auth";
 import { webStorage } from "./storage/webStorage";
+import { supabaseStore } from "./storage/supabaseStore";
+import type { RecordStore } from "./core/storage";
 import type { ReviewDraft } from "./core/draft";
 import type { PurchaseRecord } from "./core/types";
 
@@ -38,26 +45,47 @@ export function newId(): string {
 }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
+  const { status, mode, user } = useAuth();
   const [records, setRecords] = useState<PurchaseRecord[]>([]);
   const [draft, setDraft] = useState<ReviewDraft | null>(null);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      setRecords(await webStorage.listRecords());
-      setReady(true);
-    })();
-  }, []);
+  // Pick the backend by session. Held in a ref so the callbacks below always
+  // reach the current store without changing identity on every render.
+  const store: RecordStore = mode === "authenticated" ? supabaseStore : webStorage;
+  const storeRef = useRef(store);
+  storeRef.current = store;
 
   const refresh = useCallback(async () => {
-    setRecords(await webStorage.listRecords());
+    setRecords(await storeRef.current.listRecords());
   }, []);
+
+  // (Re)load whenever auth settles or the active user changes.
+  useEffect(() => {
+    if (status !== "ready") return;
+    let active = true;
+    setReady(false);
+    (async () => {
+      try {
+        const recs = await storeRef.current.listRecords();
+        if (active) setRecords(recs);
+      } catch (err) {
+        console.warn("[store] could not load records:", err);
+        if (active) setRecords([]);
+      } finally {
+        if (active) setReady(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [status, mode, user?.id]);
 
   const addRecord = useCallback(
     async (record: PurchaseRecord, blob: Blob | null) => {
       const toSave = { ...record };
-      if (blob) toSave.imageUri = await webStorage.putImage(record.id, blob);
-      await webStorage.saveRecord(toSave);
+      if (blob) toSave.imageUri = await storeRef.current.putImage(record.id, blob);
+      await storeRef.current.saveRecord(toSave);
       await refresh();
     },
     [refresh],
@@ -65,7 +93,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const updateRecord = useCallback(
     async (record: PurchaseRecord) => {
-      await webStorage.saveRecord({ ...record, updatedAt: new Date().toISOString() });
+      await storeRef.current.saveRecord({ ...record, updatedAt: new Date().toISOString() });
       await refresh();
     },
     [refresh],
@@ -73,13 +101,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const deleteRecord = useCallback(
     async (id: string) => {
-      await webStorage.deleteRecord(id);
+      await storeRef.current.deleteRecord(id);
       await refresh();
     },
     [refresh],
   );
 
   const getRecord = useCallback((id: string) => records.find((r) => r.id === id), [records]);
+
+  const resolveImage = useCallback((uri: string) => storeRef.current.resolveImageSrc(uri), []);
 
   const value = useMemo<StoreValue>(
     () => ({
@@ -91,9 +121,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addRecord,
       updateRecord,
       deleteRecord,
-      resolveImage: webStorage.resolveImageSrc,
+      resolveImage,
     }),
-    [ready, records, draft, getRecord, addRecord, updateRecord, deleteRecord],
+    [ready, records, draft, getRecord, addRecord, updateRecord, deleteRecord, resolveImage],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -10,9 +10,9 @@ type Phase =
   | { kind: "error"; message: string };
 
 /**
- * Lands here from the email-confirmation link. Exchanges the callback URL for a
- * session (PKCE code or token_hash), then routes into the app on success or
- * shows a clear error with a path back to sign-in.
+ * Lands here from an email-confirmation link OR a Google OAuth redirect — both
+ * return a PKCE `code` we exchange for a session. Routes into the app on success
+ * or shows a clear error with a path back to sign-in.
  */
 export function AuthCallback() {
   const { completeEmailConfirmation } = useAuth();
@@ -37,7 +37,7 @@ export function AuthCallback() {
         const message =
           err instanceof AuthError
             ? err.message
-            : "We couldn't confirm your email. The link may have expired.";
+            : "We couldn't complete sign-in. The link may have expired.";
         setPhase({ kind: "error", message });
       }
     })();
@@ -45,10 +45,10 @@ export function AuthCallback() {
 
   if (phase.kind === "working") {
     return (
-      <AuthShell title="Confirming your email…">
+      <AuthShell title="Signing you in…">
         <div className="row" style={{ justifyContent: "center", color: "var(--text-muted)" }}>
           <span className="spinner" />
-          <span>Verifying your confirmation link.</span>
+          <span>Completing sign-in.</span>
         </div>
       </AuthShell>
     );
@@ -56,14 +56,14 @@ export function AuthCallback() {
 
   if (phase.kind === "success") {
     return (
-      <AuthShell title="Email confirmed">
+      <AuthShell title="Signed in">
         <div className="stack" style={{ textAlign: "center" }}>
           <div className="row" style={{ justifyContent: "center" }}>
             <span className="check" style={{ width: 40, height: 40 }}>
               <IconCheck width={22} height={22} />
             </span>
           </div>
-          <Banner variant="success">Your account is active. Taking you into AutoGPC…</Banner>
+          <Banner variant="success">You're signed in. Taking you into AutoGPC…</Banner>
           <Link to="/" className="btn btn-primary btn-block">
             Continue
           </Link>

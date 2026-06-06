@@ -167,12 +167,15 @@ export const supabaseAuthProvider: AuthProvider = {
 
   // --- Seams: declared, deliberately not implemented this sprint -------------
 
-  async signInWithOAuth(_provider: OAuthProvider): Promise<void> {
-    // SEAM (a). When enabled, this becomes:
-    //   await getSupabaseClient().auth.signInWithOAuth({
-    //     provider, options: { redirectTo: `${origin}/auth/callback` } });
-    // plus enabling the Google provider in the Supabase dashboard.
-    throw new AuthError("not_implemented", "Google sign-in isn't enabled yet.");
+  async signInWithOAuth(provider: OAuthProvider): Promise<void> {
+    // Redirects the whole page to the provider, then back to /auth/callback with
+    // a PKCE `code` that AuthCallback exchanges for a session. The redirectTo
+    // must be in the Supabase dashboard's allowed Redirect URLs.
+    const { error } = await getSupabaseClient().auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) throw mapError(error, "Could not start Google sign-in.");
   },
 
   async signInWithCAC(): Promise<never> {
