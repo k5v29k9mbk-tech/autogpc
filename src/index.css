@@ -1325,28 +1325,13 @@ details.collapsible[open] summary::before {
 
 /* --- Responsive nav -------------------------------------------------------- */
 
-/* Tablet & below: slim the top bar so it stops overflowing — sign-out becomes
-   icon-only and the redundant chips (email / "Guest") drop out. Guest state is
-   still shown by the full-width GuestBanner above the nav. */
-@media (max-width: 900px) {
+/* Tablet & phone: the primary links (Home / Scan / Records) move into a fixed
+   bottom tab bar. That frees the top bar to keep the account / guest indicator
+   AND the Sign out / Exit guest button fully visible — labels included. */
+@media (max-width: 860px) {
   .nav-inner {
     gap: var(--s4);
   }
-  .signout .btn-label {
-    display: none;
-  }
-  .signout {
-    padding: 8px;
-  }
-  .account-chip .who,
-  .trust-chip {
-    display: none;
-  }
-}
-
-/* Phone: move the primary links (Home / Scan / Records) into a fixed bottom tab
-   bar; the top bar keeps brand + account + sign-out, which fits comfortably. */
-@media (max-width: 640px) {
   .nav-links {
     position: fixed;
     left: 0;
@@ -1373,9 +1358,30 @@ details.collapsible[open] summary::before {
     top: -3px;
     bottom: auto;
   }
+  .account-chip {
+    max-width: 160px;
+  }
   /* keep page content clear of the fixed bottom bar */
   .main {
     padding-bottom: calc(var(--s7) + 56px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Small phones: drop the wordmark (the logo mark still brands the bar) and
+   tighten padding so the account chip + Exit guest / Sign out button always
+   fit alongside it. */
+@media (max-width: 560px) {
+  .container {
+    padding: 0 var(--s4);
+  }
+  .nav-inner {
+    gap: var(--s3);
+  }
+  .brand .wordmark {
+    display: none;
+  }
+  .account-chip {
+    max-width: 130px;
   }
 }
 
