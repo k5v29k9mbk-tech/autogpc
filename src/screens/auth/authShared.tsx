@@ -21,7 +21,7 @@ export function AuthShell({
   children,
   footer,
 }: {
-  title: string;
+  title?: string;
   subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
@@ -32,10 +32,12 @@ export function AuthShell({
         <div className="auth-brand">
           <Logo size={96} />
         </div>
-        <div className="auth-head">
-          <h1>{title}</h1>
-          {subtitle && <p className="sub">{subtitle}</p>}
-        </div>
+        {(title || subtitle) && (
+          <div className="auth-head">
+            {title && <h1>{title}</h1>}
+            {subtitle && <p className="sub">{subtitle}</p>}
+          </div>
+        )}
         {children}
       </div>
       {footer && <div className="auth-foot">{footer}</div>}

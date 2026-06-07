@@ -85,7 +85,7 @@ export function Login() {
   };
 
   return (
-    <AuthShell title="Sign in">
+    <AuthShell>
       {!configured && (
         <div style={{ marginBottom: "var(--s4)" }}>
           <Banner variant="info">
