@@ -88,8 +88,8 @@ export function Scan() {
         <div className="eyebrow">Step 1 of 2</div>
         <h1>Scan or upload a document</h1>
         <p className="sub">
-          Images run through preprocessing + in-browser OCR; native PDFs are read straight from
-          their text layer (no OCR). Everything happens on this device.
+          Documents are read by AWS Textract for layout-aware field extraction, with in-browser
+          OCR / PDF text as an automatic fallback. Files are sent securely for processing.
         </p>
       </div>
 
@@ -169,7 +169,7 @@ export function Scan() {
                     />
                   </div>
                   <div className="muted" style={{ fontSize: 12 }}>
-                    Reading happens locally — the document never leaves your browser.
+                    Extracting fields with Textract — falls back to on-device reading if needed.
                   </div>
                 </div>
               )}
@@ -198,7 +198,7 @@ export function Scan() {
               )}
 
               <div className="muted" style={{ fontSize: 12, marginTop: "var(--s2)" }}>
-                Engine routing: {SOURCE_LABELS.pdf_text} → {SOURCE_LABELS.tesseract}.
+                Engine routing: {SOURCE_LABELS.cloud} → {SOURCE_LABELS.pdf_text} / {SOURCE_LABELS.tesseract}.
               </div>
             </div>
           </div>

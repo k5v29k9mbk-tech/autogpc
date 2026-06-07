@@ -31,42 +31,39 @@ export async function routeExtraction(
   input: ExtractionInput,
   onProgress?: ProgressCallback,
 ): Promise<ExtractionResult> {
+  if (!isPdf(input) && !isImage(input)) {
+    throw new Error(
+      `Unsupported file type: ${input.mimeType || "unknown"}. Upload a JPG, PNG, or PDF.`,
+    );
+  }
+
+  // Cloud-first: Textract AnalyzeExpense reads documents by layout, so it
+  // assigns fields (vendor / total / tax / line items) far more reliably than
+  // the regex parser, which depends on text order and breaks across vendors.
+  // Local extraction stays as an automatic fallback (offline, or if /api is
+  // down) — and never fabricates data.
+  if (CLOUD_ENABLED) {
+    try {
+      return await cloudExtractionService.extract(input, onProgress);
+    } catch (cloudErr) {
+      console.warn("[extraction] cloud failed, falling back to local:", cloudErr);
+    }
+  }
+
   if (isPdf(input)) {
     try {
       return await pdfTextService.extract(input, onProgress);
     } catch {
-      // Scanned PDF (no text layer): the cloud source can OCR it if enabled.
-      if (CLOUD_ENABLED) {
-        try {
-          return await cloudExtractionService.extract(input, onProgress);
-        } catch (cloudErr) {
-          console.warn("[extraction] cloud failed on scanned PDF, no local fallback:", cloudErr);
-        }
-      }
       throw new Error(
         "This PDF has no readable text layer — it looks like a scan. Try uploading a photo of the document instead.",
       );
     }
   }
 
-  if (isImage(input)) {
-    // Prefer the cloud source for images when enabled; degrade to local OCR
-    // (never to fabricated data) if it fails.
-    if (CLOUD_ENABLED) {
-      try {
-        return await cloudExtractionService.extract(input, onProgress);
-      } catch (cloudErr) {
-        console.warn("[extraction] cloud failed, falling back to Tesseract:", cloudErr);
-      }
-    }
-    try {
-      return await tesseractService.extract(input, onProgress);
-    } catch {
-      throw new Error("Couldn't read this image. Try a clearer, better-lit photo.");
-    }
+  // image
+  try {
+    return await tesseractService.extract(input, onProgress);
+  } catch {
+    throw new Error("Couldn't read this image. Try a clearer, better-lit photo.");
   }
-
-  throw new Error(
-    `Unsupported file type: ${input.mimeType || "unknown"}. Upload a JPG, PNG, or PDF.`,
-  );
 }
