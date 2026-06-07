@@ -69,7 +69,6 @@ export const DESIGNATION_889_OPTIONS = [
   "889 Merchant Rep",
   "889 Rebate",
 ] as const;
-export type Designation889 = (typeof DESIGNATION_889_OPTIONS)[number];
 
 export type PurchaseRecord = {
   id: string;

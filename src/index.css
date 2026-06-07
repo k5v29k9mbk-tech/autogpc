@@ -304,9 +304,6 @@ button {
   box-shadow: var(--shadow-raise);
 }
 
-.card.pad-lg {
-  padding: var(--s6);
-}
 
 .card-title {
   font-size: 16px;
