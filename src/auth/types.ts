@@ -102,6 +102,14 @@ export interface AuthProvider {
    */
   completeEmailConfirmation(url: string): Promise<AuthUser>;
 
+  /**
+   * The current session's access token, or null when there's no live session.
+   * Used by the SSO handoff (/sso/authorize) to pass a short-lived token to an
+   * allow-listed partner app, which verifies it server-side. Never the refresh
+   * token — partners mint their own session and must not be able to refresh ours.
+   */
+  getAccessToken(): Promise<string | null>;
+
   // --- Future-provider seams (declared, not implemented this sprint) ---------
 
   /**

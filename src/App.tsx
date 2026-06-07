@@ -13,6 +13,7 @@ import { CreateAccount } from "./screens/auth/CreateAccount";
 import { AuthCallback } from "./screens/auth/AuthCallback";
 import { ForgotPassword } from "./screens/auth/ForgotPassword";
 import { ResetPassword } from "./screens/auth/ResetPassword";
+import { SsoAuthorize } from "./screens/auth/SsoAuthorize";
 
 export default function App() {
   return (
@@ -23,6 +24,9 @@ export default function App() {
       <Route path="forgot-password" element={<ForgotPassword />} />
       <Route path="auth/callback" element={<AuthCallback />} />
       <Route path="auth/reset" element={<ResetPassword />} />
+
+      {/* SSO handoff for partner apps ("Sign in with Nexus"). */}
+      <Route path="sso/authorize" element={<SsoAuthorize />} />
 
       {/* Marketing site — public, stashed off the main flow. Reachable from the
           app nav (after sign-in) and from the login screen. */}

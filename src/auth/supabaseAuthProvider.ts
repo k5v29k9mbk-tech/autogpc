@@ -79,6 +79,12 @@ export const supabaseAuthProvider: AuthProvider = {
     return toAuthUser(data.session?.user ?? null);
   },
 
+  async getAccessToken(): Promise<string | null> {
+    const { data, error } = await getSupabaseClient().auth.getSession();
+    if (error) throw mapError(error, "Could not read session.");
+    return data.session?.access_token ?? null;
+  },
+
   onAuthStateChange(handler: (user: AuthUser | null) => void): () => void {
     const {
       data: { subscription },
