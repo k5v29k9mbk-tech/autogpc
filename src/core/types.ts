@@ -60,6 +60,17 @@ export type Saved889 = {
   checkedAt: string; // ISO timestamp of the SAM.gov lookup
 };
 
+/**
+ * The "889 Designation" classification US Bank asks for on a GPC order — which
+ * 889 representation pathway applies. Picked by the reviewer on the order form.
+ */
+export const DESIGNATION_889_OPTIONS = [
+  "889 Government",
+  "889 Merchant Rep",
+  "889 Rebate",
+] as const;
+export type Designation889 = (typeof DESIGNATION_889_OPTIONS)[number];
+
 export type PurchaseRecord = {
   id: string;
   vendor: string;
@@ -75,6 +86,7 @@ export type PurchaseRecord = {
   // US Bank order fields, set on review and reused when creating the order.
   requestorName: string; // cardholder / account name; defaults to the signed-in user
   emergencyTypeOperation: string; // ETO designation; defaults to "Not in support of ETO"
+  designation889: string | null; // US Bank "889 Designation" classification, picked on review
   section889: Saved889 | null; // saved 889 determination, set on the record detail page
   rawOcrText: string;
   imageUri: string;

@@ -48,6 +48,7 @@ export type RecordEdits = {
   notes: string;
   requestorName: string;
   emergencyTypeOperation: string;
+  designation889: string;
   status: RecordStatus;
   docType: DocType;
   lineItems: LineItem[];
@@ -130,6 +131,7 @@ export function recordFromDraft(
     requestorName: edits.requestorName.trim(),
     // Keep ETO non-empty: blank falls back to the standard default.
     emergencyTypeOperation: edits.emergencyTypeOperation.trim() || "Not in support of ETO",
+    designation889: edits.designation889.trim() || null,
     section889: null, // set later on the record detail page via the 889 lookup
     rawOcrText: draft.rawText,
     imageUri: draft.imageUri,

@@ -20,6 +20,7 @@ function record(over: Partial<PurchaseRecord> = {}): PurchaseRecord {
     notes: "",
     requestorName: "Marcus Holloway",
     emergencyTypeOperation: "Not in support of ETO",
+    designation889: null,
     section889: null,
     rawOcrText: "",
     imageUri: "",

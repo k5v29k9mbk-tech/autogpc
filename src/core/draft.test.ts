@@ -32,6 +32,7 @@ const EDITS: RecordEdits = {
   notes: "ok",
   requestorName: " Marcus Holloway ",
   emergencyTypeOperation: "Not in support of ETO",
+  designation889: "889 Government",
   status: "needs_review",
   docType: "receipt",
   lineItems: [{ description: "Coffee", quantity: null, unitPrice: null, total: "49.99" }],

@@ -7,6 +7,7 @@ import { DEFAULT_ETO, ETO_OPTIONS, GPC_CURRENCIES } from "../lib/usbankOrder";
 import { Field, SourceTag } from "../components/ui";
 import { IconCheck, IconTrash } from "../components/icons";
 import {
+  DESIGNATION_889_OPTIONS,
   DOC_TYPE_LABELS,
   STATUS_LABELS,
   STATUS_ORDER,
@@ -37,7 +38,9 @@ export function Review() {
       vendor: f.vendor ?? "",
       transactionDate: f.transactionDate ?? "",
       totalAmount: f.totalAmount ?? "",
-      currency: f.currency ?? "",
+      // Auto-grab the currency: use what the extractor read, else default to USD
+      // (the GPC default) rather than leaving the reviewer on "— select —".
+      currency: f.currency || "USD",
       taxAmount: f.taxAmount ?? "",
       cardLast4: f.cardLast4 ?? "",
       receiptNumber: f.receiptNumber ?? "",
@@ -45,18 +48,21 @@ export function Review() {
       notes: f.notes ?? "",
       requestorName: cardholderName,
       emergencyTypeOperation: DEFAULT_ETO,
+      designation889: "",
       status: "needs_review",
       docType: draft?.docType ?? "receipt",
       lineItems: draft?.lineItems ?? [],
     };
   });
 
+  // "Auto-filled" reflects what the extractor actually read, not the defaults we
+  // seed (currency/requestor), so count from the draft fields.
   const extractedCount = useMemo(() => {
-    if (!draft) return 0;
-    return [form.vendor, form.transactionDate, form.totalAmount, form.currency, form.taxAmount, form.cardLast4]
+    const f = draft?.fields ?? {};
+    return [f.vendor, f.transactionDate, f.totalAmount, f.currency, f.taxAmount]
       .filter((v) => v && v.trim())
       .length;
-  }, [draft, form]);
+  }, [draft]);
 
   if (!draft) return <Navigate to="/scan" replace />;
 
@@ -124,7 +130,36 @@ export function Review() {
           <span className="muted" style={{ fontSize: 12 }}>{extractedCount} fields auto-filled</span>
         </div>
 
+        {/* One US Bank order, in the order fields appear on the US Bank form:
+            requestor + ETO + 889 designation up top, then the order details. */}
         <div className="grid cols-2">
+          <Field label="Requestor name" valid={!!form.requestorName.trim()}>
+            <input
+              className="input"
+              value={form.requestorName}
+              onChange={(e) => set("requestorName", e.target.value)}
+              placeholder="Cardholder first and last name"
+            />
+          </Field>
+          <Field label="Emergency-Type Operation">
+            <select
+              className="select"
+              value={form.emergencyTypeOperation}
+              onChange={(e) => set("emergencyTypeOperation", e.target.value)}
+            >
+              {ETO_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="889 Designation" valid={!!form.designation889.trim()}>
+            <select className="select" value={form.designation889} onChange={(e) => set("designation889", e.target.value)}>
+              <option value="">— select —</option>
+              {DESIGNATION_889_OPTIONS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </Field>
           <Field label="Vendor" valid={!!form.vendor.trim()}>
             <input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} />
           </Field>
@@ -143,15 +178,6 @@ export function Review() {
           </Field>
           <Field label="Tax / VAT" valid={!!form.taxAmount.trim()}>
             <input className="input mono" value={form.taxAmount} onChange={(e) => set("taxAmount", e.target.value)} />
-          </Field>
-          <Field label="Card last 4" valid={!!form.cardLast4.trim()}>
-            <input className="input mono" value={form.cardLast4} onChange={(e) => set("cardLast4", e.target.value)} maxLength={4} />
-          </Field>
-          <Field label="Receipt number" valid={!!form.receiptNumber.trim()}>
-            <input className="input mono" value={form.receiptNumber} onChange={(e) => set("receiptNumber", e.target.value)} />
-          </Field>
-          <Field label="Invoice number" valid={!!form.invoiceNumber.trim()}>
-            <input className="input mono" value={form.invoiceNumber} onChange={(e) => set("invoiceNumber", e.target.value)} />
           </Field>
           <Field label="Document type">
             <select className="select" value={form.docType} onChange={(e) => set("docType", e.target.value as DocType)}>
@@ -175,36 +201,6 @@ export function Review() {
         </div>
       </div>
 
-      {/* US Bank order fields — set here, reused when creating the order */}
-      <div className="card">
-        <h2 className="card-title" style={{ margin: "0 0 var(--s2)" }}>US Bank order</h2>
-        <p className="muted" style={{ fontSize: 13, marginBottom: "var(--s3)" }}>
-          Required when this record becomes a US Bank order. Pre-filled — edit if needed. (Currency
-          is set in the fields above.)
-        </p>
-        <div className="grid cols-2">
-          <Field label="Requestor name" valid={!!form.requestorName.trim()}>
-            <input
-              className="input"
-              value={form.requestorName}
-              onChange={(e) => set("requestorName", e.target.value)}
-              placeholder="Cardholder first and last name"
-            />
-          </Field>
-          <Field label="Emergency-Type Operation">
-            <select
-              className="select"
-              value={form.emergencyTypeOperation}
-              onChange={(e) => set("emergencyTypeOperation", e.target.value)}
-            >
-              {ETO_OPTIONS.map((o) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      </div>
-
       {/* Line items */}
       <div className="card">
         <div className="row" style={{ marginBottom: "var(--s3)" }}>
@@ -221,13 +217,19 @@ export function Review() {
           <p className="muted" style={{ fontSize: 14 }}>No line items parsed. Add them manually if needed.</p>
         ) : (
           <div className="stack" style={{ gap: "var(--s2)" }}>
+            {/* Column headers, matching the US Bank line-item grid */}
+            <div className="row" style={{ gap: "var(--s2)", fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+              <span style={{ flex: 3 }}>Item Description</span>
+              <span style={{ flex: 1 }}>Qty</span>
+              <span style={{ flex: 1 }}>Unit Cost</span>
+              <span style={{ width: 32, flex: "0 0 auto" }} aria-hidden />
+            </div>
             {form.lineItems.map((li, i) => (
               <div key={i} className="row" style={{ gap: "var(--s2)" }}>
-                <input className="input" style={{ flex: 3 }} placeholder="Description" value={li.description} onChange={(e) => setLineItem(i, { description: e.target.value })} />
-                <input className="input mono" style={{ flex: 1 }} placeholder="Qty" value={li.quantity ?? ""} onChange={(e) => setLineItem(i, { quantity: e.target.value || null })} />
-                <input className="input mono" style={{ flex: 1 }} placeholder="Unit" value={li.unitPrice ?? ""} onChange={(e) => setLineItem(i, { unitPrice: e.target.value || null })} />
-                <input className="input mono" style={{ flex: 1 }} placeholder="Total" value={li.total ?? ""} onChange={(e) => setLineItem(i, { total: e.target.value || null })} />
-                <button className="btn btn-sm btn-ghost" aria-label="Remove line item" onClick={() => set("lineItems", form.lineItems.filter((_, idx) => idx !== i))}>
+                <input className="input" style={{ flex: 3 }} aria-label="Item description" value={li.description} onChange={(e) => setLineItem(i, { description: e.target.value })} />
+                <input className="input mono" style={{ flex: 1 }} aria-label="Quantity" value={li.quantity ?? ""} onChange={(e) => setLineItem(i, { quantity: e.target.value || null })} />
+                <input className="input mono" style={{ flex: 1 }} aria-label="Unit cost" value={li.unitPrice ?? ""} onChange={(e) => setLineItem(i, { unitPrice: e.target.value || null })} />
+                <button className="btn btn-sm btn-ghost" style={{ width: 32, flex: "0 0 auto" }} aria-label="Remove line item" onClick={() => set("lineItems", form.lineItems.filter((_, idx) => idx !== i))}>
                   <IconTrash width={15} height={15} />
                 </button>
               </div>

@@ -38,6 +38,7 @@ type Row = {
   notes: string;
   requestor_name: string;
   emergency_type_operation: string;
+  designation_889: string | null;
   section_889: Saved889 | null;
   raw_ocr_text: string;
   image_uri: string;
@@ -66,6 +67,7 @@ function toRow(r: PurchaseRecord): Row {
     notes: r.notes,
     requestor_name: r.requestorName,
     emergency_type_operation: r.emergencyTypeOperation,
+    designation_889: r.designation889,
     section_889: r.section889,
     raw_ocr_text: r.rawOcrText,
     image_uri: r.imageUri,
@@ -94,6 +96,7 @@ function fromRow(row: Row): PurchaseRecord {
     notes: row.notes,
     requestorName: row.requestor_name ?? "",
     emergencyTypeOperation: row.emergency_type_operation ?? "Not in support of ETO",
+    designation889: row.designation_889 ?? null,
     section889: row.section_889 ?? null,
     rawOcrText: row.raw_ocr_text,
     imageUri: row.image_uri,
