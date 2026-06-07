@@ -424,6 +424,22 @@ button {
   gap: 6px;
 }
 
+.field-row {
+  display: flex;
+  gap: var(--s4);
+}
+
+.field-row > .field {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  .field-row {
+    flex-direction: column;
+  }
+}
+
 .field label {
   font-size: 12.5px;
   color: var(--text-muted);

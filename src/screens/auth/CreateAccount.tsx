@@ -173,35 +173,37 @@ export function CreateAccount() {
       <form className="stack" onSubmit={submit} noValidate>
         {formError && <Banner variant="error">{formError}</Banner>}
 
-        <div className="field">
-          <label htmlFor={firstNameId}>First name</label>
-          <input
-            id={firstNameId}
-            type="text"
-            className={`input${errors.firstName ? " invalid" : ""}`}
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            autoComplete="given-name"
-            autoFocus
-            aria-invalid={errors.firstName ? true : undefined}
-            aria-describedby={errors.firstName ? `${firstNameId}-err` : undefined}
-          />
-          {errors.firstName && <FieldError id={`${firstNameId}-err`}>{errors.firstName}</FieldError>}
-        </div>
+        <div className="field-row">
+          <div className="field">
+            <label htmlFor={firstNameId}>First name</label>
+            <input
+              id={firstNameId}
+              type="text"
+              className={`input${errors.firstName ? " invalid" : ""}`}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              autoComplete="given-name"
+              autoFocus
+              aria-invalid={errors.firstName ? true : undefined}
+              aria-describedby={errors.firstName ? `${firstNameId}-err` : undefined}
+            />
+            {errors.firstName && <FieldError id={`${firstNameId}-err`}>{errors.firstName}</FieldError>}
+          </div>
 
-        <div className="field">
-          <label htmlFor={lastNameId}>Last name</label>
-          <input
-            id={lastNameId}
-            type="text"
-            className={`input${errors.lastName ? " invalid" : ""}`}
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            autoComplete="family-name"
-            aria-invalid={errors.lastName ? true : undefined}
-            aria-describedby={errors.lastName ? `${lastNameId}-err` : undefined}
-          />
-          {errors.lastName && <FieldError id={`${lastNameId}-err`}>{errors.lastName}</FieldError>}
+          <div className="field">
+            <label htmlFor={lastNameId}>Last name</label>
+            <input
+              id={lastNameId}
+              type="text"
+              className={`input${errors.lastName ? " invalid" : ""}`}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              autoComplete="family-name"
+              aria-invalid={errors.lastName ? true : undefined}
+              aria-describedby={errors.lastName ? `${lastNameId}-err` : undefined}
+            />
+            {errors.lastName && <FieldError id={`${lastNameId}-err`}>{errors.lastName}</FieldError>}
+          </div>
         </div>
 
         <div className="field">
