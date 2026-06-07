@@ -19,16 +19,17 @@ export function CreateAccount() {
   const emailId = useId();
   const pwId = useId();
   const confirmId = useId();
-  const [googleBusy, setGoogleBusy] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState<"google" | "apple" | null>(null);
 
-  const goGoogle = async () => {
+  const goOAuth = (provider: "google" | "apple") => async () => {
+    const label = provider === "apple" ? "Apple" : "Google";
     setFormError(null);
-    setGoogleBusy(true);
+    setOauthBusy(provider);
     try {
-      await signInWithOAuth("google");
+      await signInWithOAuth(provider);
     } catch (err) {
-      setGoogleBusy(false);
-      setFormError(err instanceof AuthError ? err.message : "Could not start Google sign-in.");
+      setOauthBusy(null);
+      setFormError(err instanceof AuthError ? err.message : `Could not start ${label} sign-in.`);
     }
   };
 
@@ -275,7 +276,7 @@ export function CreateAccount() {
         </button>
       </form>
 
-      <ProviderSeams onGoogle={configured ? goGoogle : undefined} busy={googleBusy} />
+      <ProviderSeams onGoogle={configured ? goOAuth("google") : undefined} busy={oauthBusy} />
 
       <div className="auth-or">or</div>
       <button

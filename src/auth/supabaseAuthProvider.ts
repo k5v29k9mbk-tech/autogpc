@@ -227,7 +227,10 @@ export const supabaseAuthProvider: AuthProvider = {
       provider,
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) throw mapError(error, "Could not start Google sign-in.");
+    if (error) {
+      const label = provider === "apple" ? "Apple" : "Google";
+      throw mapError(error, `Could not start ${label} sign-in.`);
+    }
   },
 
   async signInWithCAC(): Promise<never> {

@@ -78,7 +78,7 @@ export interface SignUpProfile {
   lastName: string;
 }
 
-export type OAuthProvider = "google";
+export type OAuthProvider = "google" | "apple";
 
 /**
  * The swappable backend. Network/identity operations only — guest mode is
@@ -128,11 +128,11 @@ export interface AuthProvider {
   // --- Future-provider seams (declared, not implemented this sprint) ---------
 
   /**
-   * SEAM (a): "Sign in with Google". Supabase supports this natively via
-   * signInWithOAuth. NOT implemented this sprint — the current implementation
-   * throws AuthError("not_implemented"). When enabled, it hooks in here plus a
-   * Google provider toggle in the Supabase dashboard and an entry in the
-   * callback's allowed redirect URLs.
+   * "Sign in with Google / Apple". Supabase supports these natively via
+   * signInWithOAuth — it redirects the page to the provider and back to
+   * /auth/callback with a PKCE `code`. Enabling a provider needs its toggle in
+   * the Supabase dashboard plus the callback URL in the allowed redirect URLs
+   * (and, for Apple, a Services ID + key configured in the dashboard).
    */
   signInWithOAuth(provider: OAuthProvider): Promise<void>;
 

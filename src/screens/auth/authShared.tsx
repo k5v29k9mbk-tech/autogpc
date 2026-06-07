@@ -7,6 +7,7 @@ import { useId, useState, type ReactNode } from "react";
 import { Logo } from "../../components/Logo";
 import {
   IconAlert,
+  IconApple,
   IconCheck,
   IconEye,
   IconEyeOff,
@@ -126,18 +127,27 @@ export function PasswordInput({
  * Provider seams below the email/password form.
  *   (a) Google  — live via Supabase signInWithOAuth when `onGoogle` is passed
  *       (and the provider is enabled in the dashboard). Disabled otherwise.
- *   (b) CAC/PIV — server-side mutual TLS + DoD cert-chain at the proxy; never
+ *   (b) Apple   — live via Supabase signInWithOAuth when `onApple` is passed
+ *       (and the provider is enabled in the dashboard). Disabled otherwise.
+ *   (c) CAC/PIV — server-side mutual TLS + DoD cert-chain at the proxy; never
  *       through Supabase. Placeholder only.
+ *
+ * `busy` tracks which provider's redirect is in flight (or none), so only the
+ * clicked button shows its loading label while both stay disabled.
  */
 export function ProviderSeams({
   onGoogle,
+  onApple,
   busy,
 }: {
   /** When provided, the Google button is live and calls this on click. */
   onGoogle?: () => void;
-  /** Disable the button while a redirect is in flight. */
-  busy?: boolean;
+  /** When provided, the Apple button is live and calls this on click. */
+  onApple?: () => void;
+  /** Which provider's redirect is in flight (disables both buttons). */
+  busy?: "google" | "apple" | null;
 }) {
+  const anyBusy = busy != null;
   return (
     <>
       <div className="auth-or">or</div>
@@ -146,8 +156,8 @@ export function ProviderSeams({
           type="button"
           className="btn btn-block"
           onClick={onGoogle}
-          disabled={!onGoogle || busy}
-          aria-disabled={!onGoogle || busy ? "true" : undefined}
+          disabled={!onGoogle || anyBusy}
+          aria-disabled={!onGoogle || anyBusy ? "true" : undefined}
           title={
             onGoogle
               ? "Continue with your Google account"
@@ -155,8 +165,28 @@ export function ProviderSeams({
           }
         >
           <IconGoogle />
-          {busy ? "Redirecting to Google…" : "Continue with Google"}
+          {busy === "google" ? "Redirecting to Google…" : "Continue with Google"}
           {!onGoogle && (
+            <span className="tag" style={{ marginLeft: "auto" }}>
+              soon
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          className="btn btn-block"
+          onClick={onApple}
+          disabled={!onApple || anyBusy}
+          aria-disabled={!onApple || anyBusy ? "true" : undefined}
+          title={
+            onApple
+              ? "Continue with your Apple account"
+              : "Apple sign-in isn't enabled yet."
+          }
+        >
+          <IconApple />
+          {busy === "apple" ? "Redirecting to Apple…" : "Continue with Apple"}
+          {!onApple && (
             <span className="tag" style={{ marginLeft: "auto" }}>
               soon
             </span>

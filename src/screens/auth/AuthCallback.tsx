@@ -10,8 +10,9 @@ type Phase =
   | { kind: "error"; message: string };
 
 /**
- * Lands here from an email-confirmation link OR a Google OAuth redirect — both
- * return a PKCE `code` we exchange for a session. Routes into the app on success
+ * Lands here from an email-confirmation link OR an OAuth redirect (Google /
+ * Apple) — both return a PKCE `code` we exchange for a session. Routes into the
+ * app on success
  * or shows a clear error with a path back to sign-in.
  */
 export function AuthCallback() {
