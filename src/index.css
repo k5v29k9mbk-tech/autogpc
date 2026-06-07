@@ -1106,8 +1106,18 @@ details.collapsible[open] summary::before {
 
 .auth-brand {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
   margin-bottom: var(--s5);
+}
+
+.auth-brand .wordmark {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 23px;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
 }
 
 .auth-head {

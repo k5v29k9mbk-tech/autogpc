@@ -31,6 +31,7 @@ export function AuthShell({
       <div className="auth-card reveal">
         <div className="auth-brand">
           <Logo size={96} />
+          <span className="wordmark">Nexus</span>
         </div>
         {(title || subtitle) && (
           <div className="auth-head">
