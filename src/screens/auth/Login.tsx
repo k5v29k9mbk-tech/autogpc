@@ -85,15 +85,7 @@ export function Login() {
   };
 
   return (
-    <AuthShell
-      title="Sign in"
-      subtitle="Receipt OCR for GPC cardholders."
-      footer={
-        <>
-          New here? <Link to="/create-account">Create an account</Link>
-        </>
-      }
-    >
+    <AuthShell title="Sign in" subtitle="Receipt OCR for GPC cardholders.">
       {!configured && (
         <div style={{ marginBottom: "var(--s4)" }}>
           <Banner variant="info">
@@ -169,6 +161,10 @@ export function Login() {
           {submitting ? <span className="spinner" /> : null}
           {submitting ? "Signing in…" : "Sign in"}
         </button>
+
+        <Link to="/create-account" className="btn btn-lg btn-block">
+          Create an account
+        </Link>
       </form>
 
       <ProviderSeams onGoogle={configured ? goGoogle : undefined} busy={googleBusy} />
