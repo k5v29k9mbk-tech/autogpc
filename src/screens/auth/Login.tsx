@@ -138,7 +138,12 @@ export function Login() {
         </div>
 
         <div className="field">
-          <label htmlFor={pwId}>Password</label>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+            <label htmlFor={pwId}>Password</label>
+            <Link to="/forgot-password" className="linkish" style={{ fontSize: 13 }}>
+              Forgot password?
+            </Link>
+          </div>
           <PasswordInput
             id={pwId}
             value={password}

@@ -40,14 +40,16 @@ export function Home() {
       </section>
 
       {/* Recent records */}
-      {recent.length > 0 && (
-        <section className="reveal" style={{ animationDelay: "80ms" }}>
-          <div className="section-head">
-            <h2>Recent records</h2>
+      <section className="reveal" style={{ animationDelay: "80ms" }}>
+        <div className="section-head">
+          <h2>Recent records</h2>
+          {recent.length > 0 && (
             <Link to="/records" className="viewall">
               View all →
             </Link>
-          </div>
+          )}
+        </div>
+        {recent.length > 0 ? (
           <div className="rec-list">
             {recent.map((r) => (
               <Link key={r.id} to={`/records/${r.id}`} className="rec-row">
@@ -67,8 +69,25 @@ export function Home() {
               </Link>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="empty empty-records">
+            <span className="empty-ico">
+              <IconReceipt width={22} height={22} />
+            </span>
+            <div className="empty-title">No records yet</div>
+            <p className="muted" style={{ fontSize: 14, marginTop: 4 }}>
+              Upload a receipt and it'll show up here.
+            </p>
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: "var(--s4)" }}
+              onClick={() => navigate("/scan")}
+            >
+              <IconUpload width={15} height={15} /> Upload receipt
+            </button>
+          </div>
+        )}
+      </section>
 
       {/* Trust line */}
       <section className="reveal" style={{ animationDelay: "140ms" }}>

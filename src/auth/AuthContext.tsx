@@ -47,6 +47,8 @@ interface AuthContextValue {
   continueAsGuest: () => void;
   resendConfirmation: (email: string) => Promise<void>;
   completeEmailConfirmation: (url: string) => Promise<AuthUser>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 
   // Seams surfaced for the UI; current provider throws not_implemented.
   signInWithOAuth: (provider: OAuthProvider) => Promise<void>;
@@ -153,6 +155,16 @@ export function AuthProviderComponent({
     [],
   );
 
+  const requestPasswordReset = useCallback(
+    (email: string) => providerRef.current.requestPasswordReset(email),
+    [],
+  );
+
+  const updatePassword = useCallback(
+    (newPassword: string) => providerRef.current.updatePassword(newPassword),
+    [],
+  );
+
   const mode: AuthMode = user ? "authenticated" : isGuest ? "guest" : "anonymous";
 
   const value = useMemo<AuthContextValue>(
@@ -169,6 +181,8 @@ export function AuthProviderComponent({
       resendConfirmation,
       completeEmailConfirmation,
       signInWithOAuth,
+      requestPasswordReset,
+      updatePassword,
     }),
     [
       status,
@@ -182,6 +196,8 @@ export function AuthProviderComponent({
       resendConfirmation,
       completeEmailConfirmation,
       signInWithOAuth,
+      requestPasswordReset,
+      updatePassword,
     ],
   );
 

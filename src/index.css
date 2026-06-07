@@ -806,6 +806,32 @@ details.collapsible[open] summary::before {
   border-radius: var(--r-card);
 }
 
+/* Richer empty state (Home "Recent records" placeholder). */
+.empty-records {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.empty-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  margin-bottom: var(--s3);
+}
+
+.empty-title {
+  color: var(--text);
+  font-weight: 600;
+  font-size: 15px;
+}
+
 .dropzone {
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--r-card);
@@ -1064,18 +1090,8 @@ details.collapsible[open] summary::before {
 
 .auth-brand {
   display: flex;
-  align-items: center;
-  gap: var(--s3);
   justify-content: center;
   margin-bottom: var(--s5);
-}
-
-.auth-brand .wordmark {
-  font-family: var(--font-ui);
-  font-weight: 600;
-  font-size: 19px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
 }
 
 .auth-head {
@@ -1305,29 +1321,110 @@ details.collapsible[open] summary::before {
 }
 
 /* Compact account chip + menu in the top nav. */
-.account-chip {
+/* Account dropdown in the top nav: a pill-style trigger (email / "Guest") that
+   opens a menu with Account settings + Sign out. Replaces the old chip + the
+   separate sign-out button. */
+.account-menu {
+  position: relative;
+}
+
+.account-trigger {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
+  max-width: 240px;
+  font: inherit;
   font-size: 13px;
   color: var(--text-muted);
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
   padding: 5px var(--s3);
-  max-width: 220px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.account-chip .who {
+.account-trigger:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.account-trigger .who {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.account-trigger .chev {
+  flex-shrink: 0;
+  transform: rotate(90deg);
+  transition: transform 0.15s;
+  opacity: 0.7;
+}
+
+.account-trigger[aria-expanded="true"] .chev {
+  transform: rotate(-90deg);
+}
+
+.account-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-card);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  padding: var(--s2);
+  z-index: 30;
+}
+
+.account-pop-head {
+  padding: var(--s2) var(--s3) var(--s3);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--s2);
+  font-size: 12px;
+}
+
+.account-pop-email {
+  color: var(--text);
+  font-size: 13px;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-pop-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: var(--r-btn);
+  padding: 9px var(--s3);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.account-pop-item:hover {
+  background: var(--surface-3);
+}
+
+.account-pop-item.danger {
+  color: var(--danger);
+}
+
 /* --- Responsive nav -------------------------------------------------------- */
 
 /* Tablet & phone: the primary links (Home / Scan / Records) move into a fixed
-   bottom tab bar. That frees the top bar to keep the account / guest indicator
-   AND the Sign out / Exit guest button fully visible — labels included. */
+   bottom tab bar. That frees the top bar to keep the account menu fully
+   visible. */
 @media (max-width: 860px) {
   .nav-inner {
     gap: var(--s4);
@@ -1358,8 +1455,8 @@ details.collapsible[open] summary::before {
     top: -3px;
     bottom: auto;
   }
-  .account-chip {
-    max-width: 160px;
+  .account-trigger {
+    max-width: 200px;
   }
   /* keep page content clear of the fixed bottom bar */
   .main {
@@ -1367,9 +1464,9 @@ details.collapsible[open] summary::before {
   }
 }
 
-/* Small phones: drop the wordmark (the logo mark still brands the bar) and
-   tighten padding so the account chip + Exit guest / Sign out button always
-   fit alongside it. */
+/* Small phones: drop the wordmark (the logo mark still brands the bar) and hide
+   the email text in the trigger (icon + chevron only); the dropdown still shows
+   the full email. */
 @media (max-width: 560px) {
   .container {
     padding: 0 var(--s4);
@@ -1380,8 +1477,8 @@ details.collapsible[open] summary::before {
   .brand .wordmark {
     display: none;
   }
-  .account-chip {
-    max-width: 130px;
+  .account-trigger .who {
+    display: none;
   }
 }
 

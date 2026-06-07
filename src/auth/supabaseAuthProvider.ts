@@ -128,6 +128,21 @@ export const supabaseAuthProvider: AuthProvider = {
     if (error) throw mapError(error, "Could not resend the confirmation email.");
   },
 
+  async requestPasswordReset(email: string): Promise<void> {
+    // The reset link lands on /auth/reset, which exchanges the code for a
+    // recovery session (via completeEmailConfirmation) and then collects the
+    // new password.
+    const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset`,
+    });
+    if (error) throw mapError(error, "Could not send the reset email.");
+  },
+
+  async updatePassword(newPassword: string): Promise<void> {
+    const { error } = await getSupabaseClient().auth.updateUser({ password: newPassword });
+    if (error) throw mapError(error, "Could not update your password.");
+  },
+
   async completeEmailConfirmation(url: string): Promise<AuthUser> {
     const parsed = new URL(url);
     const params = parsed.searchParams;

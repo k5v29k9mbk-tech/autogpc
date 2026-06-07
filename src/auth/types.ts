@@ -87,6 +87,16 @@ export interface AuthProvider {
   resendConfirmation(email: string): Promise<void>;
 
   /**
+   * Send a password-reset email. The link returns the user to the app with a
+   * recovery code (completed via completeEmailConfirmation), after which
+   * updatePassword sets the new password.
+   */
+  requestPasswordReset(email: string): Promise<void>;
+
+  /** Set a new password for the user in the current (recovery) session. */
+  updatePassword(newPassword: string): Promise<void>;
+
+  /**
    * Complete an email-confirmation redirect: exchange the callback URL for a
    * session. Returns the confirmed user. Throws AuthError on failure.
    */

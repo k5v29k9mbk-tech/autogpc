@@ -30,8 +30,7 @@ export function AuthShell({
     <div className="auth-shell">
       <div className="auth-card reveal">
         <div className="auth-brand">
-          <Logo size={28} />
-          <span className="wordmark">AutoGPC</span>
+          <Logo size={64} />
         </div>
         <div className="auth-head">
           <h1>{title}</h1>

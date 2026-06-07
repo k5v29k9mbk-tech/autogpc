@@ -7,9 +7,12 @@ import { Scan } from "./screens/Scan";
 import { Review } from "./screens/Review";
 import { Records } from "./screens/Records";
 import { RecordDetail } from "./screens/RecordDetail";
+import { Account } from "./screens/Account";
 import { Login } from "./screens/auth/Login";
 import { CreateAccount } from "./screens/auth/CreateAccount";
 import { AuthCallback } from "./screens/auth/AuthCallback";
+import { ForgotPassword } from "./screens/auth/ForgotPassword";
+import { ResetPassword } from "./screens/auth/ResetPassword";
 
 export default function App() {
   return (
@@ -17,7 +20,9 @@ export default function App() {
       {/* Pre-app auth screens — full-screen, outside the app shell. */}
       <Route path="login" element={<Login />} />
       <Route path="create-account" element={<CreateAccount />} />
+      <Route path="forgot-password" element={<ForgotPassword />} />
       <Route path="auth/callback" element={<AuthCallback />} />
+      <Route path="auth/reset" element={<ResetPassword />} />
 
       {/* Marketing site — public, stashed off the main flow. Reachable from the
           app nav (after sign-in) and from the login screen. */}
@@ -37,6 +42,7 @@ export default function App() {
         <Route path="review" element={<Review />} />
         <Route path="records" element={<Records />} />
         <Route path="records/:id" element={<RecordDetail />} />
+        <Route path="account" element={<Account />} />
         <Route path="*" element={<Home />} />
       </Route>
     </Routes>
