@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, AuthError } from "../../auth";
 import { validateEmail } from "../../lib/validation";
 import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./authShared";
@@ -7,6 +7,12 @@ import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./a
 export function Login() {
   const { login, signInWithOAuth, resendConfirmation, continueAsGuest, configured } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // Where to go after sign-in. Only same-app paths (leading "/") are honored, so
+  // ?next can't be used as an open redirect. Used by the SSO handoff to return
+  // the user to /sso/authorize.
+  const nextParam = params.get("next");
+  const dest = nextParam && nextParam.startsWith("/") ? nextParam : "/";
   const emailId = useId();
   const pwId = useId();
   const [googleBusy, setGoogleBusy] = useState(false);
@@ -36,7 +42,7 @@ export function Login() {
     setSubmitting(true);
     try {
       await login(email.trim(), password);
-      navigate("/", { replace: true });
+      navigate(dest, { replace: true });
     } catch (err) {
       const ae = err instanceof AuthError ? err : null;
       if (ae?.code === "email_not_confirmed") {
