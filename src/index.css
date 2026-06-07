@@ -1108,8 +1108,8 @@ details.collapsible[open] summary::before {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--s3);
-  margin-bottom: var(--s5);
+  gap: var(--s1);
+  margin-bottom: var(--s4);
 }
 
 .auth-brand .wordmark {

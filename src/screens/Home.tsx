@@ -15,7 +15,7 @@ export function Home() {
       {/* Hero */}
       <section className="hero reveal">
         <div>
-          <div className="hero-eyebrow">For U.S. Government &amp; Defense cardholders</div>
+          <div className="hero-eyebrow">Automation, anytime, anywhere</div>
           <h1 className="hero-title">
             Upload once,
             <br />

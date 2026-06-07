@@ -3,7 +3,7 @@
 // future-provider seam buttons (Google / CAC) — present but deliberately
 // disabled this sprint.
 
-import { useId, useState, type ReactNode } from "react";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { Logo } from "../../components/Logo";
 import {
   IconAlert,
@@ -31,7 +31,7 @@ export function AuthShell({
     <div className="auth-shell">
       <div className="auth-card reveal">
         <div className="auth-brand">
-          <Logo size={96} />
+          <Logo size={120} />
           <span className="wordmark">Nexus</span>
         </div>
         {(title || subtitle) && (
@@ -148,6 +148,15 @@ export function ProviderSeams({
   busy?: "google" | "apple" | null;
 }) {
   const anyBusy = busy != null;
+  // Pin the "soon" tag to the right edge so the icon + label stay centered in
+  // the button (like the live Google button), rather than being pushed left by
+  // a margin-auto tag.
+  const tagStyle: CSSProperties = {
+    position: "absolute",
+    right: "var(--s3)",
+    top: "50%",
+    transform: "translateY(-50%)",
+  };
   return (
     <>
       <div className="auth-or">or</div>
@@ -155,6 +164,7 @@ export function ProviderSeams({
         <button
           type="button"
           className="btn btn-block"
+          style={{ position: "relative" }}
           onClick={onGoogle}
           disabled={!onGoogle || anyBusy}
           aria-disabled={!onGoogle || anyBusy ? "true" : undefined}
@@ -167,7 +177,7 @@ export function ProviderSeams({
           <IconGoogle />
           {busy === "google" ? "Redirecting to Google…" : "Continue with Google"}
           {!onGoogle && (
-            <span className="tag" style={{ marginLeft: "auto" }}>
+            <span className="tag" style={tagStyle}>
               soon
             </span>
           )}
@@ -175,6 +185,7 @@ export function ProviderSeams({
         <button
           type="button"
           className="btn btn-block"
+          style={{ position: "relative" }}
           onClick={onApple}
           disabled={!onApple || anyBusy}
           aria-disabled={!onApple || anyBusy ? "true" : undefined}
@@ -187,7 +198,7 @@ export function ProviderSeams({
           <IconApple />
           {busy === "apple" ? "Redirecting to Apple…" : "Continue with Apple"}
           {!onApple && (
-            <span className="tag" style={{ marginLeft: "auto" }}>
+            <span className="tag" style={tagStyle}>
               soon
             </span>
           )}
@@ -195,13 +206,14 @@ export function ProviderSeams({
         <button
           type="button"
           className="btn btn-block"
+          style={{ position: "relative" }}
           disabled
           aria-disabled="true"
           title="CAC / PIV sign-in runs at the proxy (mutual TLS + DoD cert chain), not through Supabase. Arrives with the GovCloud backend."
         >
           <IconShield width={18} height={18} />
           Sign in with CAC / PIV
-          <span className="tag" style={{ marginLeft: "auto" }}>
+          <span className="tag" style={tagStyle}>
             soon
           </span>
         </button>

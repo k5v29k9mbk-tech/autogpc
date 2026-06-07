@@ -39,7 +39,7 @@ async function run() {
   const src = await Jimp.read(SRC);
 
   // --- knockout (cream on transparent) ---
-  const mark = src.clone();
+  let mark = src.clone();
   mark.scan(0, 0, mark.bitmap.width, mark.bitmap.height, function (_x, _y, idx) {
     const d = this.bitmap.data;
     const lum = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2];
@@ -48,7 +48,24 @@ async function run() {
     d[idx + 2] = CREAM.b;
     d[idx + 3] = alphaForLum(lum);
   });
-  await mark.clone().resize(512, Jimp.AUTO).writeAsync(resolve(PUBLIC, "nexus-mark.png"));
+
+  // The source has generous transparent padding, which left the rendered mark
+  // looking small and floaty. Trim it to the hawk's bounding box, then re-pad
+  // to a square with only a sliver of breathing room (MARGIN) so the mark
+  // nearly fills its square box wherever it's drawn with `contain`.
+  mark.autocrop();
+  const MARGIN = 0.05; // fraction of the longer side
+  const longest = Math.max(mark.bitmap.width, mark.bitmap.height);
+  const box = Math.round(longest * (1 + MARGIN * 2));
+  const squared = new Jimp(box, box, 0x00000000);
+  squared.composite(
+    mark,
+    Math.round((box - mark.bitmap.width) / 2),
+    Math.round((box - mark.bitmap.height) / 2),
+  );
+  mark = squared;
+
+  await mark.clone().resize(512, 512).writeAsync(resolve(PUBLIC, "nexus-mark.png"));
 
   // --- favicon + apple touch ---
   // `contain` preserves the mark's shape inside the box. padRatio is the total
