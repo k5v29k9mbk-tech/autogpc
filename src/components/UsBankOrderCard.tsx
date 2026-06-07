@@ -16,6 +16,7 @@ import {
 import { submitUsBankOrder } from "../lib/usbankClient";
 import { formatAmount } from "../lib/format";
 import { useAuth } from "../auth";
+import { useStore } from "../store";
 import type { PurchaseRecord } from "../core/types";
 import { Section889Field } from "./Section889Field";
 import { IconAlert, IconCheck } from "./icons";
@@ -25,6 +26,7 @@ const APP_URL = import.meta.env.VITE_USBANK_APP_URL;
 
 export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   const { user } = useAuth();
+  const { updateRecord } = useStore();
 
   // Requestor defaults to the signed-in cardholder's name; the reviewer can
   // override. `null` means "untouched" so the default keeps tracking the user
@@ -199,7 +201,11 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
         {/* 889 Designation — SAM.gov representation lookup + downloadable record */}
         <div className="stack" style={{ gap: 6 }}>
           <div className="label-row" style={{ fontSize: 13, fontWeight: 600 }}>889 Designation *</div>
-          <Section889Field record={record} />
+          <Section889Field
+            vendor={record.vendor}
+            saved={record.section889}
+            onChange={(value) => updateRecord({ ...record, section889: value })}
+          />
         </div>
 
         {warnings.length > 0 && (

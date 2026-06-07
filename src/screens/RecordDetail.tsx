@@ -7,6 +7,7 @@ import { IconArrowLeft, IconCheck, IconCopy, IconDownload, IconTrash } from "../
 import { formatAmount, orDash } from "../lib/format";
 import { documentsMissing, documentsPresent, toJson, toStructuredText } from "../lib/exportRecord";
 import { USBANK_ENABLED, UsBankOrderCard } from "../components/UsBankOrderCard";
+import { Section889Field } from "../components/Section889Field";
 import {
   DOC_TYPE_LABELS,
   STATUS_LABELS,
@@ -246,6 +247,19 @@ export function RecordDetail() {
           <button className="btn btn-sm" disabled={record.status === "exported"} onClick={() => setStatus("exported")}>Mark exported</button>
         </div>
       </div>
+
+      {/* 889 representation — SAM.gov lookup. When US Bank is enabled the same
+          lookup lives inside the order card, so only stand alone otherwise. */}
+      {!USBANK_ENABLED && (
+        <div className="card">
+          <div className="card-title">889 representation</div>
+          <Section889Field
+            vendor={record.vendor}
+            saved={record.section889}
+            onChange={(value) => updateRecord({ ...record, section889: value })}
+          />
+        </div>
+      )}
 
       {/* US Bank order handoff */}
       {USBANK_ENABLED && <UsBankOrderCard record={record} />}

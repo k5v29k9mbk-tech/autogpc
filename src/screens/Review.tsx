@@ -5,7 +5,8 @@ import { recordFromDraft, type RecordEdits } from "../core/draft";
 import { useAuth } from "../auth";
 import { DEFAULT_ETO, ETO_OPTIONS, GPC_CURRENCIES } from "../lib/usbankOrder";
 import { Field, SourceTag } from "../components/ui";
-import { IconCheck, IconTrash } from "../components/icons";
+import { Section889Field } from "../components/Section889Field";
+import { IconTrash } from "../components/icons";
 import {
   DESIGNATION_889_OPTIONS,
   DOC_TYPE_LABELS,
@@ -14,6 +15,7 @@ import {
   type DocType,
   type LineItem,
   type RecordStatus,
+  type Saved889,
 } from "../core/types";
 
 // The review form is exactly the set of fields a reviewer confirms before save.
@@ -26,7 +28,6 @@ export function Review() {
   const { draft, setDraft, addRecord } = useStore();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [saved, setSaved] = useState<{ id: string } | null>(null);
 
   // Receipts don't carry the requestor — default it to the signed-in cardholder.
   const cardholderName =
@@ -55,6 +56,9 @@ export function Review() {
     };
   });
 
+  // SAM.gov 889 determination confirmed during review; attached to the record on save.
+  const [section889, setSection889] = useState<Saved889 | null>(null);
+
   // "Auto-filled" reflects what the extractor actually read, not the defaults we
   // seed (currency/requestor), so count from the draft fields.
   const extractedCount = useMemo(() => {
@@ -77,37 +81,11 @@ export function Review() {
 
   const save = async () => {
     const id = newId();
-    const record = recordFromDraft(draft, form, { id, finishedAt: Date.now() });
+    const record = { ...recordFromDraft(draft, form, { id, finishedAt: Date.now() }), section889 };
     await addRecord(record, draft.imageBlob);
     setDraft(null);
-    setSaved({ id });
+    navigate("/records");
   };
-
-  if (saved) {
-    return (
-      <div className="stack" style={{ maxWidth: 560, margin: "0 auto" }}>
-        <div className="card pad-lg reveal" style={{ textAlign: "center" }}>
-          <div className="row" style={{ justifyContent: "center", marginBottom: "var(--s3)" }}>
-            <span className="check" style={{ width: 32, height: 32 }}>
-              <IconCheck width={20} height={20} />
-            </span>
-          </div>
-          <h1 style={{ fontSize: 22 }}>Record saved</h1>
-          <p className="muted" style={{ marginTop: "var(--s3)" }}>
-            The record is saved and ready for review.
-          </p>
-          <div className="row" style={{ justifyContent: "center", marginTop: "var(--s5)" }}>
-            <button className="btn btn-primary" onClick={() => navigate(`/records/${saved.id}`)}>
-              View record
-            </button>
-            <button className="btn btn-ghost" onClick={() => navigate("/scan")}>
-              Scan another
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="stack" style={{ gap: "var(--s5)" }}>
@@ -190,6 +168,13 @@ export function Review() {
               ))}
             </select>
           </Field>
+        </div>
+
+        {/* SAM.gov 889 representation lookup — confirm the vendor's FAR
+            52.204-26 status now; the verdict is attached to the saved record. */}
+        <div className="field" style={{ marginTop: "var(--s4)" }}>
+          <label>889 representation (SAM.gov lookup)</label>
+          <Section889Field vendor={form.vendor} saved={section889} onChange={setSection889} />
         </div>
 
         <div className="field" style={{ marginTop: "var(--s4)" }}>

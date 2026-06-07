@@ -5,11 +5,10 @@
 // 889 Representations" survive a reload with no second SAM.gov call.
 
 import { useState } from "react";
-import { useStore } from "../store";
 import { search889 } from "../lib/section889Client";
 import { download889Record } from "../lib/section889Pdf";
 import { pickBestMatch, type Section889Entity } from "../lib/section889";
-import type { PurchaseRecord, Saved889 } from "../core/types";
+import type { Saved889 } from "../core/types";
 import { IconAlert, IconCheck, IconDownload, IconSearch } from "./icons";
 
 type Phase = "idle" | "loading" | "results" | "error";
@@ -31,10 +30,18 @@ function ComplianceBadge({ compliance }: { compliance: Section889Entity["complia
   );
 }
 
-export function Section889Field({ record }: { record: PurchaseRecord }) {
-  const { updateRecord } = useStore();
-  const vendor = record.vendor;
-  const saved = record.section889;
+// Controlled widget: the parent owns where the determination lives (a saved
+// record on the detail page, or the in-flight draft on the review step) and how
+// it's persisted. We just drive the SAM.gov lookup and hand back the verdict.
+export function Section889Field({
+  vendor,
+  saved,
+  onChange,
+}: {
+  vendor: string;
+  saved: Saved889 | null;
+  onChange: (value: Saved889 | null) => void | Promise<void>;
+}) {
 
   const [recheck, setRecheck] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -65,7 +72,7 @@ export function Section889Field({ record }: { record: PurchaseRecord }) {
     setError(null);
     try {
       const determination: Saved889 = { entity: selected, checkedAt: new Date().toISOString() };
-      await updateRecord({ ...record, section889: determination });
+      await onChange(determination);
       await download889Record(selected);
       setRecheck(false); // record now carries it -> SavedView renders
     } catch (e) {
@@ -122,7 +129,7 @@ export function Section889Field({ record }: { record: PurchaseRecord }) {
           >
             Re-check
           </button>
-          <button className="btn btn-sm btn-ghost" onClick={() => updateRecord({ ...record, section889: null })}>
+          <button className="btn btn-sm btn-ghost" onClick={() => onChange(null)}>
             Clear
           </button>
         </div>
