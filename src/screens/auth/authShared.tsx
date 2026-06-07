@@ -202,7 +202,7 @@ export function ProviderSeams({
           <IconShield width={18} height={18} />
           Sign in with CAC / PIV
           <span className="tag" style={{ marginLeft: "auto" }}>
-            GovCloud
+            soon
           </span>
         </button>
       </div>
