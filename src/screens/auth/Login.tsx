@@ -85,7 +85,7 @@ export function Login() {
   };
 
   return (
-    <AuthShell title="Sign in" subtitle="Receipt OCR for GPC cardholders.">
+    <AuthShell title="Sign in">
       {!configured && (
         <div style={{ marginBottom: "var(--s4)" }}>
           <Banner variant="info">
