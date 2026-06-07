@@ -130,10 +130,10 @@ export function Review() {
           <span className="muted" style={{ fontSize: 12 }}>{extractedCount} fields auto-filled</span>
         </div>
 
-        {/* One US Bank order, in the order fields appear on the US Bank form:
-            requestor + ETO + 889 designation up top, then the order details. */}
+        {/* One US Bank order, in the order the fields appear on the US Bank form:
+            requestor, ETO, amount, merchant, 889 designation, then the rest. */}
         <div className="grid cols-2">
-          <Field label="Requestor name" valid={!!form.requestorName.trim()}>
+          <Field label="Requestor name *" valid={!!form.requestorName.trim()}>
             <input
               className="input"
               value={form.requestorName}
@@ -141,7 +141,7 @@ export function Review() {
               placeholder="Cardholder first and last name"
             />
           </Field>
-          <Field label="Emergency-Type Operation">
+          <Field label="Emergency-Type Operation (OM) *">
             <select
               className="select"
               value={form.emergencyTypeOperation}
@@ -152,7 +152,20 @@ export function Review() {
               ))}
             </select>
           </Field>
-          <Field label="889 Designation" valid={!!form.designation889.trim()}>
+          <Field label="Amount *" valid={!!form.totalAmount.trim()}>
+            <div className="row" style={{ gap: "var(--s2)" }}>
+              <input className="input mono" style={{ flex: 1 }} value={form.totalAmount} onChange={(e) => set("totalAmount", e.target.value)} />
+              <select aria-label="Currency" className="select" style={{ width: "auto" }} value={form.currency} onChange={(e) => set("currency", e.target.value)}>
+                {CURRENCIES.map((c) => (
+                  <option key={c} value={c}>{c || "— select —"}</option>
+                ))}
+              </select>
+            </div>
+          </Field>
+          <Field label="Merchant name *" valid={!!form.vendor.trim()}>
+            <input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} />
+          </Field>
+          <Field label="889 Designation *" valid={!!form.designation889.trim()}>
             <select className="select" value={form.designation889} onChange={(e) => set("designation889", e.target.value)}>
               <option value="">— select —</option>
               {DESIGNATION_889_OPTIONS.map((d) => (
@@ -160,21 +173,8 @@ export function Review() {
               ))}
             </select>
           </Field>
-          <Field label="Vendor" valid={!!form.vendor.trim()}>
-            <input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} />
-          </Field>
           <Field label="Transaction date" valid={!!form.transactionDate.trim()}>
             <input className="input mono" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} placeholder="MM/DD/YYYY · DD.MM.YYYY · YYYY-MM-DD" />
-          </Field>
-          <Field label="Total amount" valid={!!form.totalAmount.trim()}>
-            <input className="input mono" value={form.totalAmount} onChange={(e) => set("totalAmount", e.target.value)} />
-          </Field>
-          <Field label="Currency" valid={!!form.currency.trim()}>
-            <select className="select" value={form.currency} onChange={(e) => set("currency", e.target.value)}>
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>{c || "— select —"}</option>
-              ))}
-            </select>
           </Field>
           <Field label="Tax / VAT" valid={!!form.taxAmount.trim()}>
             <input className="input mono" value={form.taxAmount} onChange={(e) => set("taxAmount", e.target.value)} />
@@ -197,7 +197,7 @@ export function Review() {
 
         <div className="field" style={{ marginTop: "var(--s4)" }}>
           <label>Notes</label>
-          <textarea className="textarea" value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Anything a reviewer should know (e.g. 889 status, missing docs)." />
+          <textarea className="textarea" value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="e.g. 889 status, missing docs." />
         </div>
       </div>
 
