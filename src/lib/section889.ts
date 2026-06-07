@@ -42,34 +42,10 @@ export type RawEntity = {
   } | null;
 };
 
-export type Section889Compliance = {
-  /** True only when the vendor represented "DOES NOT" to both 52.204-26(c)(1) and (2). */
-  isCompliant: boolean;
-  /** SmartPay's verdict, e.g. "COMPLIANT" or "NONCOMPLIANT - USES COVERED TELECOMMUNICATIONS". */
-  statusText: string;
-  /** FAR provision revision date, e.g. "OCT 2020". */
-  farProvisionDate: string | null;
-  /** The two representation paragraphs, when present. */
-  farC1: string | null;
-  farC2: string | null;
-};
-
-export type Section889Entity = {
-  uei: string | null;
-  cage: string | null;
-  legalName: string;
-  url: string | null;
-  /** Address as display-ready lines (empty when SAM withheld the address). */
-  addressLines: string[];
-  registrationStatus: string | null;
-  /** Dates formatted MM-DD-YYYY to match the SmartPay record; null when absent. */
-  activationDate: string | null;
-  expirationDate: string | null;
-  hasActiveExclusion: boolean;
-  /** SmartPay's flag for whether this row is a pickable parent entity. */
-  isSelectable: boolean;
-  compliance: Section889Compliance;
-};
+// The clean domain types live in core/types so a saved determination can be
+// part of the platform-agnostic record. Re-exported here for existing importers.
+export type { Section889Compliance, Section889Entity, Saved889 } from "../core/types";
+import type { Section889Entity } from "../core/types";
 
 /** ISO "2026-01-02" -> "01-02-2026" (the format the SmartPay PDF prints). */
 function toUsDate(iso: string | null | undefined): string | null {

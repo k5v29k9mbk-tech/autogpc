@@ -29,6 +29,37 @@ export type ExtractionSource = "pdf_text" | "tesseract" | "cloud";
 
 export type DocType = "receipt" | "invoice" | "quote" | "vat_form" | "other";
 
+// Section 889 representation, mapped from the GSA SmartPay 889 tool's SAM.gov
+// data. Defined here (not in lib) so a saved determination is part of the
+// platform-agnostic record; the lib/section889 mapper imports these.
+export type Section889Compliance = {
+  isCompliant: boolean;
+  statusText: string;
+  farProvisionDate: string | null;
+  farC1: string | null;
+  farC2: string | null;
+};
+
+export type Section889Entity = {
+  uei: string | null;
+  cage: string | null;
+  legalName: string;
+  url: string | null;
+  addressLines: string[];
+  registrationStatus: string | null;
+  activationDate: string | null;
+  expirationDate: string | null;
+  hasActiveExclusion: boolean;
+  isSelectable: boolean;
+  compliance: Section889Compliance;
+};
+
+/** A point-in-time 889 determination attached to a record (audit evidence). */
+export type Saved889 = {
+  entity: Section889Entity;
+  checkedAt: string; // ISO timestamp of the SAM.gov lookup
+};
+
 export type PurchaseRecord = {
   id: string;
   vendor: string;
@@ -44,6 +75,7 @@ export type PurchaseRecord = {
   // US Bank order fields, set on review and reused when creating the order.
   requestorName: string; // cardholder / account name; defaults to the signed-in user
   emergencyTypeOperation: string; // ETO designation; defaults to "Not in support of ETO"
+  section889: Saved889 | null; // saved 889 determination, set on the record detail page
   rawOcrText: string;
   imageUri: string;
   status: RecordStatus;

@@ -14,6 +14,7 @@ import type {
   LineItem,
   PurchaseRecord,
   RecordStatus,
+  Saved889,
 } from "../core/types";
 
 const TABLE = "records";
@@ -37,6 +38,7 @@ type Row = {
   notes: string;
   requestor_name: string;
   emergency_type_operation: string;
+  section_889: Saved889 | null;
   raw_ocr_text: string;
   image_uri: string;
   status: RecordStatus;
@@ -64,6 +66,7 @@ function toRow(r: PurchaseRecord): Row {
     notes: r.notes,
     requestor_name: r.requestorName,
     emergency_type_operation: r.emergencyTypeOperation,
+    section_889: r.section889,
     raw_ocr_text: r.rawOcrText,
     image_uri: r.imageUri,
     status: r.status,
@@ -91,6 +94,7 @@ function fromRow(row: Row): PurchaseRecord {
     notes: row.notes,
     requestorName: row.requestor_name ?? "",
     emergencyTypeOperation: row.emergency_type_operation ?? "Not in support of ETO",
+    section889: row.section_889 ?? null,
     rawOcrText: row.raw_ocr_text,
     imageUri: row.image_uri,
     status: row.status,

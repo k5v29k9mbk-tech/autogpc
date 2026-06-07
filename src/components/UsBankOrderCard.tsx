@@ -199,7 +199,7 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
         {/* 889 Designation — SAM.gov representation lookup + downloadable record */}
         <div className="stack" style={{ gap: 6 }}>
           <div className="label-row" style={{ fontSize: 13, fontWeight: 600 }}>889 Designation *</div>
-          <Section889Field vendor={record.vendor} />
+          <Section889Field record={record} />
         </div>
 
         {warnings.length > 0 && (

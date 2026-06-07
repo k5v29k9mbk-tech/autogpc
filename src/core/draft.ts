@@ -130,6 +130,7 @@ export function recordFromDraft(
     requestorName: edits.requestorName.trim(),
     // Keep ETO non-empty: blank falls back to the standard default.
     emergencyTypeOperation: edits.emergencyTypeOperation.trim() || "Not in support of ETO",
+    section889: null, // set later on the record detail page via the 889 lookup
     rawOcrText: draft.rawText,
     imageUri: draft.imageUri,
     status: edits.status,
