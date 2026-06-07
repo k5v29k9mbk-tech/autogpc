@@ -57,11 +57,8 @@ describe("toUsBankOrder", () => {
       { productCode: null, description: "EXTCORD ORNG 50FT", qty: 1, unitCost: 14.99, lineTotal: 14.99 },
       { productCode: null, description: "EXTCORD ORNG 25FT", qty: 3, unitCost: 7.99, lineTotal: 23.97 },
     ]);
-    // Only the unavoidable manual-confirm warnings (ETO + 889) remain.
-    expect(warnings).toEqual([
-      expect.stringContaining("Emergency-Type Operation"),
-      expect.stringContaining("889"),
-    ]);
+    // ETO is now a selector with a default, so only the 889 set-up note remains.
+    expect(warnings).toEqual([expect.stringContaining("889")]);
   });
 
   it("warns when the requestor name is missing (API requires it)", () => {
@@ -94,10 +91,22 @@ describe("toUsBankOrder", () => {
     expect(warnings.some((w) => w.toLowerCase().includes("line items"))).toBe(true);
   });
 
-  it("carries tax + ETO default in manual fields", () => {
+  it("carries tax + ETO default + currency in manual fields", () => {
     const { manual } = toUsBankOrder(record({ taxAmount: "2.50" }), { requestorName: "X" });
     expect(manual.totalTax).toBe(2.5);
     expect(manual.emergencyTypeOperation).toBe("Not in support of ETO");
     expect(manual.designation889).toBeNull();
+    expect(manual.currency).toBe("USD");
+  });
+
+  it("honors an ETO and currency override", () => {
+    const { manual, warnings } = toUsBankOrder(record(), {
+      requestorName: "X",
+      eto: "In Support of ETO",
+      currency: "eur",
+    });
+    expect(manual.emergencyTypeOperation).toBe("In Support of ETO");
+    expect(manual.currency).toBe("EUR");
+    expect(warnings.some((w) => w.includes("EUR"))).toBe(true);
   });
 });

@@ -4,6 +4,8 @@ const CURRENCY_SYMBOL: Record<string, string> = {
   USD: "$",
   EUR: "€",
   GBP: "£",
+  JPY: "¥",
+  KRW: "₩",
 };
 
 /** 38 -> "0:38", 72 -> "1:12" */

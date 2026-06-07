@@ -40,11 +40,23 @@ export type UsBankOrderDraft = {
     emergencyTypeOperation: string; // default; needs human confirmation
     designation889: string | null; // deferred to a later sprint
     totalTax: number | null;
+    /** Source currency, ISO code. US Bank requires it; OCONUS orders aren't USD. */
+    currency: string;
   };
 };
 
 /** ETO is almost always this; still requires a human to confirm per order. */
 export const DEFAULT_ETO = "Not in support of ETO";
+
+/** The two Emergency-Type Operation values US Bank accepts. */
+export const ETO_OPTIONS = [DEFAULT_ETO, "In Support of ETO"] as const;
+
+/**
+ * Source currencies a GPC cardholder realistically uses: USD CONUS, plus the
+ * common OCONUS theatres (EUR, GBP, JPY, KRW). US Bank's Source Currency field
+ * is required, so the reviewer picks from these when a receipt isn't in USD.
+ */
+export const GPC_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "KRW"] as const;
 
 function toNumber(s: string | null | undefined): number | null {
   if (s == null) return null;
@@ -90,7 +102,7 @@ function mapLineItem(li: LineItem): UsBankLineItem {
  */
 export function toUsBankOrder(
   record: PurchaseRecord,
-  opts: { requestorName?: string } = {},
+  opts: { requestorName?: string; eto?: string; currency?: string } = {},
 ): UsBankOrderDraft {
   const warnings: string[] = [];
 
@@ -104,10 +116,12 @@ export function toUsBankOrder(
   const amount = toNumber(record.totalAmount) ?? 0;
   if (amount <= 0) warnings.push("Amount is required and must be greater than 0.");
 
-  const currency = record.currency.trim().toUpperCase();
+  // Reviewer override wins over the detected currency (e.g. an OCONUS receipt
+  // whose symbol didn't survive OCR). US Bank's Source Currency is required.
+  const currency = (opts.currency ?? record.currency).trim().toUpperCase();
   if (currency && currency !== "USD")
-    warnings.push(`Amount is in ${currency}, not USD — convert it before submitting.`);
-  else if (!currency) warnings.push("Currency not detected — confirm the amount is in USD.");
+    warnings.push(`Source currency is ${currency} — enter the converted USD amount US Bank will settle.`);
+  else if (!currency) warnings.push("Currency not detected — confirm the Source Currency before submitting.");
 
   const iso = toIsoDate(record.transactionDate);
   if (!iso && record.transactionDate.trim())
@@ -118,8 +132,9 @@ export function toUsBankOrder(
     warnings.push("No line items extracted — add them before submitting if required.");
 
   // Form-only fields the clone API can't store yet:
-  warnings.push(`Confirm Emergency-Type Operation (default: "${DEFAULT_ETO}").`);
-  warnings.push("889 Designation not set (deferred to a later sprint).");
+  warnings.push("889 Designation not set (vendor-derived workflow — set up next).");
+
+  const eto = (opts.eto ?? DEFAULT_ETO).trim() || DEFAULT_ETO;
 
   const payload: UsBankOrderPayload = {
     merchantName,
@@ -133,9 +148,10 @@ export function toUsBankOrder(
     payload,
     warnings,
     manual: {
-      emergencyTypeOperation: DEFAULT_ETO,
+      emergencyTypeOperation: eto,
       designation889: null,
       totalTax: toNumber(record.taxAmount),
+      currency,
     },
   };
 }
