@@ -59,7 +59,7 @@ export function Review() {
   // seed (currency/requestor), so count from the draft fields.
   const extractedCount = useMemo(() => {
     const f = draft?.fields ?? {};
-    return [f.vendor, f.transactionDate, f.totalAmount, f.currency, f.taxAmount]
+    return [f.vendor, f.transactionDate, f.totalAmount, f.currency]
       .filter((v) => v && v.trim())
       .length;
   }, [draft]);
@@ -176,9 +176,6 @@ export function Review() {
           <Field label="Transaction date" valid={!!form.transactionDate.trim()}>
             <input className="input mono" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} placeholder="MM/DD/YYYY · DD.MM.YYYY · YYYY-MM-DD" />
           </Field>
-          <Field label="Tax / VAT" valid={!!form.taxAmount.trim()}>
-            <input className="input mono" value={form.taxAmount} onChange={(e) => set("taxAmount", e.target.value)} />
-          </Field>
           <Field label="Document type">
             <select className="select" value={form.docType} onChange={(e) => set("docType", e.target.value as DocType)}>
               {DOC_TYPES.map((d) => (
@@ -222,14 +219,14 @@ export function Review() {
               <span style={{ flex: 3 }}>Item Description</span>
               <span style={{ flex: 1 }}>Qty</span>
               <span style={{ flex: 1 }}>Unit Cost</span>
-              <span style={{ width: 32, flex: "0 0 auto" }} aria-hidden />
+              <span style={{ width: 40, flex: "0 0 auto" }} aria-hidden />
             </div>
             {form.lineItems.map((li, i) => (
               <div key={i} className="row" style={{ gap: "var(--s2)" }}>
                 <input className="input" style={{ flex: 3 }} aria-label="Item description" value={li.description} onChange={(e) => setLineItem(i, { description: e.target.value })} />
                 <input className="input mono" style={{ flex: 1 }} aria-label="Quantity" value={li.quantity ?? ""} onChange={(e) => setLineItem(i, { quantity: e.target.value || null })} />
                 <input className="input mono" style={{ flex: 1 }} aria-label="Unit cost" value={li.unitPrice ?? ""} onChange={(e) => setLineItem(i, { unitPrice: e.target.value || null })} />
-                <button className="btn btn-sm btn-ghost" style={{ width: 32, flex: "0 0 auto" }} aria-label="Remove line item" onClick={() => set("lineItems", form.lineItems.filter((_, idx) => idx !== i))}>
+                <button className="btn btn-ghost" style={{ width: 40, height: 40, padding: 0, flex: "0 0 auto" }} aria-label="Remove line item" onClick={() => set("lineItems", form.lineItems.filter((_, idx) => idx !== i))}>
                   <IconTrash width={15} height={15} />
                 </button>
               </div>

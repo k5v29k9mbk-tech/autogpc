@@ -145,7 +145,6 @@ export function RecordDetail() {
                   {CURRENCIES.map((c) => <option key={c} value={c}>{c || "— select —"}</option>)}
                 </select>
               </Field>
-              <Field label="Tax / VAT"><input className="input mono" value={form.taxAmount ?? ""} onChange={(e) => set("taxAmount", e.target.value || null)} /></Field>
               <Field label="Card last 4"><input className="input mono" value={form.cardLast4 ?? ""} maxLength={4} onChange={(e) => set("cardLast4", e.target.value || null)} /></Field>
               <Field label="Receipt number"><input className="input mono" value={form.receiptNumber ?? ""} onChange={(e) => set("receiptNumber", e.target.value || null)} /></Field>
               <Field label="Invoice number"><input className="input mono" value={form.invoiceNumber ?? ""} onChange={(e) => set("invoiceNumber", e.target.value || null)} /></Field>
@@ -165,7 +164,6 @@ export function RecordDetail() {
               <dt>Vendor</dt><dd>{orDash(record.vendor)}</dd>
               <dt>Transaction date</dt><dd>{orDash(record.transactionDate)}</dd>
               <dt>Total</dt><dd>{formatAmount(record.totalAmount, record.currency)}</dd>
-              <dt>Tax / VAT</dt><dd>{record.taxAmount ? formatAmount(record.taxAmount, record.currency) : "—"}</dd>
               <dt>Currency</dt><dd>{orDash(record.currency)}</dd>
               <dt>Card last 4</dt><dd>{orDash(record.cardLast4)}</dd>
               <dt>Receipt no.</dt><dd>{orDash(record.receiptNumber)}</dd>
