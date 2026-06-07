@@ -13,6 +13,15 @@ export interface AuthUser {
   email: string | null;
   /** True once the user has confirmed their email (signup flow gates on this). */
   emailConfirmed: boolean;
+  /**
+   * Display name, when known. Sourced from the provider's user metadata —
+   * our own signup fields (first_name/last_name) or an OAuth provider's profile
+   * (Google sends full_name / given_name / family_name). Any may be null when
+   * the provider didn't supply it.
+   */
+  firstName: string | null;
+  lastName: string | null;
+  fullName: string | null;
 }
 
 /**

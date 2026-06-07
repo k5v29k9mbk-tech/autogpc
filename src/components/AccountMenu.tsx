@@ -14,7 +14,11 @@ export function AccountMenu() {
   const ref = useRef<HTMLDivElement>(null);
 
   const isGuest = mode === "guest";
-  const label = isGuest ? "Guest" : user?.email ?? "Account";
+  // Prefer the user's name (from our signup fields or the OAuth profile), falling
+  // back to email, then a generic label.
+  const name = user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+  const accountLabel = (name && name.length ? name : null) ?? user?.email ?? "Account";
+  const label = isGuest ? "Guest" : accountLabel;
 
   useEffect(() => {
     if (!open) return;
@@ -46,7 +50,7 @@ export function AccountMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
-        title={isGuest ? "Guest mode" : user?.email ?? "Account"}
+        title={isGuest ? "Guest mode" : accountLabel}
       >
         {isGuest ? (
           <span className="dot" style={{ background: "var(--warn)" }} />

@@ -20,13 +20,32 @@ function emailRedirectTo(): string {
   return `${window.location.origin}/auth/callback`;
 }
 
+/** Coerce a metadata value to a trimmed non-empty string, or null. */
+function metaString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
 function toAuthUser(user: User | null): AuthUser | null {
   if (!user) return null;
+  // Password signup writes first_name/last_name/full_name; Google OAuth writes
+  // given_name/family_name/full_name (a.k.a. name). Read either shape.
+  const meta = user.user_metadata ?? {};
+  const firstName = metaString(meta.first_name) ?? metaString(meta.given_name);
+  const lastName = metaString(meta.last_name) ?? metaString(meta.family_name);
+  const fullName =
+    metaString(meta.full_name) ??
+    metaString(meta.name) ??
+    metaString([firstName, lastName].filter(Boolean).join(" "));
   return {
     id: user.id,
     email: user.email ?? null,
     // email_confirmed_at is set once the address is confirmed.
     emailConfirmed: Boolean(user.email_confirmed_at ?? user.confirmed_at),
+    firstName,
+    lastName,
+    fullName,
   };
 }
 
