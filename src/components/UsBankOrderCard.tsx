@@ -17,6 +17,7 @@ import { submitUsBankOrder } from "../lib/usbankClient";
 import { formatAmount } from "../lib/format";
 import { useAuth } from "../auth";
 import type { PurchaseRecord } from "../core/types";
+import { Section889Field } from "./Section889Field";
 import { IconAlert, IconCheck } from "./icons";
 
 export const USBANK_ENABLED = import.meta.env.VITE_USBANK_ENABLED === "true";
@@ -33,10 +34,12 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
       (user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ") ?? "").trim(),
     [user],
   );
+  // Seed from what the reviewer saved on the record; fall back to sensible
+  // defaults. Still editable here as a last-minute override before submit.
   const [requestorEdit, setRequestorEdit] = useState<string | null>(null);
-  const requestor = requestorEdit ?? cardholderName;
+  const requestor = requestorEdit ?? (record.requestorName.trim() || cardholderName);
 
-  const [eto, setEto] = useState<string>(DEFAULT_ETO);
+  const [eto, setEto] = useState<string>(record.emergencyTypeOperation || DEFAULT_ETO);
   const [currency, setCurrency] = useState<string>(
     (record.currency || "USD").toUpperCase(),
   );
@@ -154,13 +157,6 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
 
           <dt>Total tax *</dt>
           <dd className="mono">{formatAmount(record.taxAmount ?? "0", currency)}</dd>
-
-          <dt>889 Designation *</dt>
-          <dd>
-            <span className="badge" style={{ color: "var(--text-muted)" }}>
-              Set up next — derived from vendor
-            </span>
-          </dd>
         </dl>
 
         {/* Line items, in US Bank's column order */}
@@ -198,6 +194,12 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
               </tbody>
             </table>
           )}
+        </div>
+
+        {/* 889 Designation — SAM.gov representation lookup + downloadable record */}
+        <div className="stack" style={{ gap: 6 }}>
+          <div className="label-row" style={{ fontSize: 13, fontWeight: 600 }}>889 Designation *</div>
+          <Section889Field vendor={record.vendor} />
         </div>
 
         {warnings.length > 0 && (

@@ -5,8 +5,6 @@ import { routeExtraction } from "../core/extraction/extractionRouter";
 import { draftFromResult } from "../core/draft";
 import type { ExtractionProgress } from "../core/extraction/extractionService";
 import { renderPdfThumbnail } from "../lib/pdfThumbnail";
-import { formatTimer } from "../lib/format";
-import { useElapsed } from "../hooks/useElapsed";
 import { SOURCE_LABELS } from "../core/types";
 import { IconFile, IconImage, IconUpload } from "../components/icons";
 
@@ -31,9 +29,6 @@ export function Scan() {
   const [progress, setProgress] = useState<ExtractionProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-
-  const elapsed = useElapsed(startedAt, working);
 
   const onFiles = useCallback(async (f: File | null) => {
     if (!f) return;
@@ -67,7 +62,6 @@ export function Scan() {
     setError(null);
     setProgress({ stage: "loading", progress: 0 });
     const begin = Date.now();
-    setStartedAt(begin);
 
     try {
       const result = await routeExtraction(
@@ -164,8 +158,6 @@ export function Scan() {
                       {STAGE_TEXT[progress.stage]}
                       {progress.message ? ` · ${progress.message}` : ""}
                     </span>
-                    <div className="spacer" />
-                    <span className="readout" style={{ color: "var(--accent-text)" }}>{formatTimer(elapsed)}</span>
                   </div>
                   <div className="progress">
                     <span

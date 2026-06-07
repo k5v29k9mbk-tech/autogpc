@@ -7,7 +7,7 @@ import {
   type DocumentChecklist,
   type PurchaseRecord,
 } from "../core/types";
-import { formatAmount, formatTimer, orDash } from "./format";
+import { formatAmount, orDash } from "./format";
 
 const CHECKLIST_LABELS: Record<keyof DocumentChecklist, string> = {
   receiptUploaded: "Receipt",
@@ -66,11 +66,6 @@ export function toStructuredText(record: PurchaseRecord): string {
   if (record.notes.trim()) {
     lines.push("");
     lines.push(`Notes: ${record.notes.trim()}`);
-  }
-
-  if (record.captureSeconds != null) {
-    lines.push("");
-    lines.push(pair("Captured in:", `${formatTimer(record.captureSeconds)} (manual baseline ~12 min)`));
   }
 
   return lines.join("\n");

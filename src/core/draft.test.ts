@@ -30,6 +30,8 @@ const EDITS: RecordEdits = {
   receiptNumber: "",
   invoiceNumber: " ",
   notes: "ok",
+  requestorName: " Marcus Holloway ",
+  emergencyTypeOperation: "Not in support of ETO",
   status: "needs_review",
   docType: "receipt",
   lineItems: [{ description: "Coffee", quantity: null, unitPrice: null, total: "49.99" }],
@@ -117,6 +119,15 @@ describe("recordFromDraft", () => {
     expect(rec.docType).toBe("invoice");
     expect(rec.documentChecklist.invoiceUploaded).toBe(true);
     expect(rec.documentChecklist.receiptUploaded).toBe(false);
+  });
+
+  it("carries the US Bank order fields, trimming the requestor and defaulting blank ETO", () => {
+    const rec = recordFromDraft(draft, { ...EDITS, emergencyTypeOperation: "  " }, { id: "r1", finishedAt: 20_000 });
+    expect(rec.requestorName).toBe("Marcus Holloway");
+    expect(rec.emergencyTypeOperation).toBe("Not in support of ETO");
+
+    const inSupport = recordFromDraft(draft, { ...EDITS, emergencyTypeOperation: "In Support of ETO" }, { id: "r1", finishedAt: 20_000 });
+    expect(inSupport.emergencyTypeOperation).toBe("In Support of ETO");
   });
 
   it("carries source, rawText and id straight from the draft and context", () => {

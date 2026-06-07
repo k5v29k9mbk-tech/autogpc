@@ -8,24 +8,6 @@ const CURRENCY_SYMBOL: Record<string, string> = {
   KRW: "₩",
 };
 
-/** 38 -> "0:38", 72 -> "1:12" */
-export function formatTimer(totalSeconds: number): string {
-  const s = Math.max(0, Math.round(totalSeconds));
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
-
-/** 6420 -> "1h 47m", 2820 -> "47m", 40 -> "< 1m" */
-export function formatDuration(totalSeconds: number): string {
-  const s = Math.max(0, Math.round(totalSeconds));
-  if (s < 60) return "< 1m";
-  const h = Math.floor(s / 3600);
-  const m = Math.round((s % 3600) / 60);
-  if (h === 0) return `${m}m`;
-  return `${h}h ${m.toString().padStart(2, "0")}m`;
-}
-
 /** Format a normalized numeric string ("1830.5") with its currency. */
 export function formatAmount(value: string | null | undefined, currency?: string | null): string {
   if (!value) return "—";

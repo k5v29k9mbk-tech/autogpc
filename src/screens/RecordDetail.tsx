@@ -4,10 +4,9 @@ import { useStore } from "../store";
 import { RecordImage } from "../components/RecordImage";
 import { DocTypeTag, Field, SourceTag, StatusBadge } from "../components/ui";
 import { IconArrowLeft, IconCheck, IconCopy, IconDownload, IconTrash } from "../components/icons";
-import { formatAmount, formatDuration, formatTimer, orDash } from "../lib/format";
+import { formatAmount, orDash } from "../lib/format";
 import { documentsMissing, documentsPresent, toJson, toStructuredText } from "../lib/exportRecord";
 import { USBANK_ENABLED, UsBankOrderCard } from "../components/UsBankOrderCard";
-import { savedSecondsFor } from "../lib/timeSaved";
 import {
   DOC_TYPE_LABELS,
   STATUS_LABELS,
@@ -125,26 +124,6 @@ export function RecordDetail() {
           </button>
         </div>
       </div>
-
-      {/* Capture / savings strip */}
-      {record.captureSeconds != null && (
-        <div className="card row wrap" style={{ gap: "var(--s5)" }}>
-          <div>
-            <div className="stat-label">Captured in</div>
-            <div className="readout" style={{ fontSize: 22, color: "var(--accent-text)" }}>{formatTimer(record.captureSeconds)}</div>
-          </div>
-          <div className="divider" style={{ width: 1, height: 36, margin: 0 }} />
-          <div>
-            <div className="stat-label">Manual GPC entry</div>
-            <div className="readout" style={{ fontSize: 22 }}>~12:00</div>
-          </div>
-          <div className="divider" style={{ width: 1, height: 36, margin: 0 }} />
-          <div>
-            <div className="stat-label">Time saved</div>
-            <div className="readout" style={{ fontSize: 22, color: "var(--accent-text)" }}>{formatDuration(savedSecondsFor(record))}</div>
-          </div>
-        </div>
-      )}
 
       <div className="grid cols-2" style={{ alignItems: "start" }}>
         {/* Image */}

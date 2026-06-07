@@ -41,11 +41,14 @@ export type PurchaseRecord = {
   invoiceNumber: string | null;
   lineItems: LineItem[];
   notes: string;
+  // US Bank order fields, set on review and reused when creating the order.
+  requestorName: string; // cardholder / account name; defaults to the signed-in user
+  emergencyTypeOperation: string; // ETO designation; defaults to "Not in support of ETO"
   rawOcrText: string;
   imageUri: string;
   status: RecordStatus;
   documentChecklist: DocumentChecklist;
-  captureSeconds: number | null; // measured capture time, for the time-saved features
+  captureSeconds: number | null; // measured capture time (retained on the record; no longer surfaced)
   source: ExtractionSource;
   docType: DocType;
   createdAt: string;
@@ -79,10 +82,6 @@ export const SOURCE_LABELS: Record<ExtractionSource, string> = {
   tesseract: "OCR (Tesseract)",
   cloud: "Cloud extractor",
 };
-
-// The assumed manual baseline the demo is pitched against: a cardholder spends
-// ~10–15 min building a US Bank order by hand. We use 12 minutes as the midpoint.
-export const MANUAL_BASELINE_SECONDS = 12 * 60;
 
 export function emptyChecklist(): DocumentChecklist {
   return {

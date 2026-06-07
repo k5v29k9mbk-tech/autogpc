@@ -15,7 +15,6 @@ import {
   IconSearch,
   IconShield,
   IconUpload,
-  IconChevronRight,
 } from "../components/icons";
 
 const STEPS = [
@@ -243,31 +242,6 @@ export function Landing() {
             ))}
           </div>
         </div>
-
-        {/* Time contrast — the app's own capture timer vs a manual baseline */}
-        <section className="lp-band">
-          <div className="lp-container lp-band-grid lp-reveal">
-            <div className="lp-stat">
-              <div className="lp-stat-k">Manual GPC entry</div>
-              <div className="lp-stat-v">~12 min</div>
-              <div className="lp-stat-bar full"><span /></div>
-              <div className="lp-stat-s">per order, by hand</div>
-            </div>
-            <div className="lp-band-arrow" aria-hidden="true">
-              <IconChevronRight width={22} height={22} />
-            </div>
-            <div className="lp-stat">
-              <div className="lp-stat-k">With AutoGPC</div>
-              <div className="lp-stat-v accent">under a minute</div>
-              <div className="lp-stat-bar accent short"><span /></div>
-              <div className="lp-stat-s">captured and structured</div>
-            </div>
-            <p className="lp-band-note">
-              Times reflect the app's own capture timer against a 12-minute manual baseline, not an
-              independent study.
-            </p>
-          </div>
-        </section>
 
         {/* How it works */}
         <section id="how" className="lp-section">

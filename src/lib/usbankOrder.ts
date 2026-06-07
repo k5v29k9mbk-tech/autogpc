@@ -132,7 +132,7 @@ export function toUsBankOrder(
     warnings.push("No line items extracted — add them before submitting if required.");
 
   // Form-only fields the clone API can't store yet:
-  warnings.push("889 Designation not set (vendor-derived workflow — set up next).");
+  warnings.push("Confirm the 889 representation below and attach the downloaded record.");
 
   const eto = (opts.eto ?? DEFAULT_ETO).trim() || DEFAULT_ETO;
 

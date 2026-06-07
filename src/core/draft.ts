@@ -46,6 +46,8 @@ export type RecordEdits = {
   receiptNumber: string;
   invoiceNumber: string;
   notes: string;
+  requestorName: string;
+  emergencyTypeOperation: string;
   status: RecordStatus;
   docType: DocType;
   lineItems: LineItem[];
@@ -125,6 +127,9 @@ export function recordFromDraft(
     invoiceNumber: edits.invoiceNumber.trim() || null,
     lineItems: edits.lineItems,
     notes: edits.notes,
+    requestorName: edits.requestorName.trim(),
+    // Keep ETO non-empty: blank falls back to the standard default.
+    emergencyTypeOperation: edits.emergencyTypeOperation.trim() || "Not in support of ETO",
     rawOcrText: draft.rawText,
     imageUri: draft.imageUri,
     status: edits.status,

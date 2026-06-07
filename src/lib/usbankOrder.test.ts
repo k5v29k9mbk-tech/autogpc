@@ -18,6 +18,8 @@ function record(over: Partial<PurchaseRecord> = {}): PurchaseRecord {
       { description: "EXTCORD ORNG 25FT", quantity: "3", unitPrice: "7.99", total: "23.97" },
     ],
     notes: "",
+    requestorName: "Marcus Holloway",
+    emergencyTypeOperation: "Not in support of ETO",
     rawOcrText: "",
     imageUri: "",
     status: "needs_review",

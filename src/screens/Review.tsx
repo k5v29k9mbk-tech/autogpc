@@ -2,14 +2,12 @@ import { useMemo, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { newId, useStore } from "../store";
 import { recordFromDraft, type RecordEdits } from "../core/draft";
-import { savedSecondsFor } from "../lib/timeSaved";
-import { useElapsed } from "../hooks/useElapsed";
+import { useAuth } from "../auth";
+import { DEFAULT_ETO, ETO_OPTIONS, GPC_CURRENCIES } from "../lib/usbankOrder";
 import { Field, SourceTag } from "../components/ui";
-import { IconCheck, IconClock, IconTrash } from "../components/icons";
-import { formatDuration, formatTimer } from "../lib/format";
+import { IconCheck, IconTrash } from "../components/icons";
 import {
   DOC_TYPE_LABELS,
-  MANUAL_BASELINE_SECONDS,
   STATUS_LABELS,
   STATUS_ORDER,
   type DocType,
@@ -20,19 +18,18 @@ import {
 // The review form is exactly the set of fields a reviewer confirms before save.
 type Form = RecordEdits;
 
-const CURRENCIES = ["", "USD", "EUR", "GBP"];
+const CURRENCIES = ["", ...GPC_CURRENCIES];
 const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as DocType[];
 
 export function Review() {
   const { draft, setDraft, addRecord } = useStore();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [saved, setSaved] = useState<{
-    capturedSeconds: number;
-    savedSeconds: number;
-    id: string;
-  } | null>(null);
+  const [saved, setSaved] = useState<{ id: string } | null>(null);
 
-  const elapsed = useElapsed(draft?.captureStartedAt ?? null, !saved);
+  // Receipts don't carry the requestor — default it to the signed-in cardholder.
+  const cardholderName =
+    (user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ") ?? "").trim();
 
   const [form, setForm] = useState<Form>(() => {
     const f = draft?.fields ?? {};
@@ -46,6 +43,8 @@ export function Review() {
       receiptNumber: f.receiptNumber ?? "",
       invoiceNumber: f.invoiceNumber ?? "",
       notes: f.notes ?? "",
+      requestorName: cardholderName,
+      emergencyTypeOperation: DEFAULT_ETO,
       status: "needs_review",
       docType: draft?.docType ?? "receipt",
       lineItems: draft?.lineItems ?? [],
@@ -75,11 +74,7 @@ export function Review() {
     const record = recordFromDraft(draft, form, { id, finishedAt: Date.now() });
     await addRecord(record, draft.imageBlob);
     setDraft(null);
-    setSaved({
-      capturedSeconds: record.captureSeconds ?? 0,
-      savedSeconds: savedSecondsFor(record),
-      id,
-    });
+    setSaved({ id });
   };
 
   if (saved) {
@@ -92,12 +87,8 @@ export function Review() {
             </span>
           </div>
           <h1 style={{ fontSize: 22 }}>Record saved</h1>
-          <div className="stat-value" style={{ color: "var(--accent-text)", margin: "var(--s4) 0 0" }}>
-            Captured in {formatTimer(saved.capturedSeconds)}
-          </div>
           <p className="muted" style={{ marginTop: "var(--s3)" }}>
-            Manual GPC entry takes <strong style={{ color: "var(--text)" }}>~12 min</strong>. This
-            capture saved about <strong style={{ color: "var(--text)" }}>{formatDuration(saved.savedSeconds)}</strong>.
+            The record is saved and ready for review.
           </p>
           <div className="row" style={{ justifyContent: "center", marginTop: "var(--s5)" }}>
             <button className="btn btn-primary" onClick={() => navigate(`/records/${saved.id}`)}>
@@ -115,17 +106,8 @@ export function Review() {
   return (
     <div className="stack" style={{ gap: "var(--s5)" }}>
       <div className="page-head">
-        <div className="row" style={{ gap: "var(--s3)" }}>
-          <div>
-            <div className="eyebrow">Step 2 of 2</div>
-            <h1>Review extracted fields</h1>
-          </div>
-          <div className="spacer" />
-          <span className="badge" title="Live capture timer" style={{ color: "var(--accent-text)" }}>
-            <IconClock width={14} height={14} />
-            <span className="readout">{formatTimer(elapsed)}</span>
-          </span>
-        </div>
+        <div className="eyebrow">Step 2 of 2</div>
+        <h1>Review extracted fields</h1>
         <p className="sub">
           Correct anything the extractor missed, then save. Prefer fixing here over trusting a shaky
           guess — that is what keeps the record audit-ready.
@@ -193,6 +175,36 @@ export function Review() {
         </div>
       </div>
 
+      {/* US Bank order fields — set here, reused when creating the order */}
+      <div className="card">
+        <h2 className="card-title" style={{ margin: "0 0 var(--s2)" }}>US Bank order</h2>
+        <p className="muted" style={{ fontSize: 13, marginBottom: "var(--s3)" }}>
+          Required when this record becomes a US Bank order. Pre-filled — edit if needed. (Currency
+          is set in the fields above.)
+        </p>
+        <div className="grid cols-2">
+          <Field label="Requestor name" valid={!!form.requestorName.trim()}>
+            <input
+              className="input"
+              value={form.requestorName}
+              onChange={(e) => set("requestorName", e.target.value)}
+              placeholder="Cardholder first and last name"
+            />
+          </Field>
+          <Field label="Emergency-Type Operation">
+            <select
+              className="select"
+              value={form.emergencyTypeOperation}
+              onChange={(e) => set("emergencyTypeOperation", e.target.value)}
+            >
+              {ETO_OPTIONS.map((o) => (
+                <option key={o} value={o}>{o}</option>
+              ))}
+            </select>
+          </Field>
+        </div>
+      </div>
+
       {/* Line items */}
       <div className="card">
         <div className="row" style={{ marginBottom: "var(--s3)" }}>
@@ -235,10 +247,6 @@ export function Review() {
       <div className="row wrap">
         <button className="btn btn-primary btn-lg" onClick={save}>Save record</button>
         <Link to="/scan" className="btn btn-ghost btn-lg">Discard</Link>
-        <div className="spacer" />
-        <span className="muted" style={{ fontSize: 13 }}>
-          Manual baseline ~{formatTimer(MANUAL_BASELINE_SECONDS)} · live capture {formatTimer(elapsed)}
-        </span>
       </div>
     </div>
   );

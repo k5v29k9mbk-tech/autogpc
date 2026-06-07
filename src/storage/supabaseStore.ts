@@ -35,6 +35,8 @@ type Row = {
   invoice_number: string | null;
   line_items: LineItem[];
   notes: string;
+  requestor_name: string;
+  emergency_type_operation: string;
   raw_ocr_text: string;
   image_uri: string;
   status: RecordStatus;
@@ -60,6 +62,8 @@ function toRow(r: PurchaseRecord): Row {
     invoice_number: r.invoiceNumber,
     line_items: r.lineItems,
     notes: r.notes,
+    requestor_name: r.requestorName,
+    emergency_type_operation: r.emergencyTypeOperation,
     raw_ocr_text: r.rawOcrText,
     image_uri: r.imageUri,
     status: r.status,
@@ -85,6 +89,8 @@ function fromRow(row: Row): PurchaseRecord {
     invoiceNumber: row.invoice_number,
     lineItems: row.line_items ?? [],
     notes: row.notes,
+    requestorName: row.requestor_name ?? "",
+    emergencyTypeOperation: row.emergency_type_operation ?? "Not in support of ETO",
     rawOcrText: row.raw_ocr_text,
     imageUri: row.image_uri,
     status: row.status,
