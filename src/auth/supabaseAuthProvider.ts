@@ -11,6 +11,7 @@ import {
   type AuthProvider,
   type AuthUser,
   type OAuthProvider,
+  type SignUpProfile,
   type SignUpResult,
 } from "./types";
 
@@ -94,11 +95,22 @@ export const supabaseAuthProvider: AuthProvider = {
     return () => subscription.unsubscribe();
   },
 
-  async signUp(email: string, password: string): Promise<SignUpResult> {
+  async signUp(email: string, password: string, profile: SignUpProfile): Promise<SignUpResult> {
+    const firstName = profile.firstName.trim();
+    const lastName = profile.lastName.trim();
     const { data, error } = await getSupabaseClient().auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: emailRedirectTo() },
+      options: {
+        emailRedirectTo: emailRedirectTo(),
+        // Stored on the Supabase user as user_metadata; downstream services
+        // (e.g. the US Bank mock) read these to personalize the account.
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          full_name: `${firstName} ${lastName}`.trim(),
+        },
+      },
     });
     if (error) throw mapError(error, "Could not create your account.");
 

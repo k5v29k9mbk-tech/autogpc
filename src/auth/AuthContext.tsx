@@ -28,6 +28,7 @@ import {
   type AuthStatus,
   type AuthUser,
   type OAuthProvider,
+  type SignUpProfile,
   type SignUpResult,
 } from "./types";
 
@@ -41,7 +42,7 @@ interface AuthContextValue {
   /** Whether the Supabase env vars are present (UI can show a setup hint). */
   configured: boolean;
 
-  signUp: (email: string, password: string) => Promise<SignUpResult>;
+  signUp: (email: string, password: string, profile: SignUpProfile) => Promise<SignUpResult>;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   continueAsGuest: () => void;
@@ -112,7 +113,8 @@ export function AuthProviderComponent({
   }, []);
 
   const signUp = useCallback(
-    (email: string, password: string) => providerRef.current.signUp(email, password),
+    (email: string, password: string, profile: SignUpProfile) =>
+      providerRef.current.signUp(email, password, profile),
     [],
   );
 

@@ -4,6 +4,7 @@ import { useAuth, AuthError } from "../../auth";
 import {
   passwordStrength,
   validateEmail,
+  validateName,
   validatePassword,
   validatePasswordConfirm,
 } from "../../lib/validation";
@@ -13,6 +14,8 @@ import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./a
 export function CreateAccount() {
   const { signUp, signInWithOAuth, resendConfirmation, continueAsGuest, configured } = useAuth();
   const navigate = useNavigate();
+  const firstNameId = useId();
+  const lastNameId = useId();
   const emailId = useId();
   const pwId = useId();
   const confirmId = useId();
@@ -29,10 +32,18 @@ export function CreateAccount() {
     }
   };
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [errors, setErrors] = useState<{ email?: string; password?: string; confirm?: string }>({});
+  const [errors, setErrors] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    password?: string;
+    confirm?: string;
+  }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,11 +58,15 @@ export function CreateAccount() {
     e.preventDefault();
     setFormError(null);
 
+    const firstNameErr = validateName(firstName, "First name");
+    const lastNameErr = validateName(lastName, "Last name");
     const emailErr = validateEmail(email);
     const pwErr = validatePassword(password);
     const confirmErr = validatePasswordConfirm(password, confirm);
-    if (emailErr || pwErr || confirmErr) {
+    if (firstNameErr || lastNameErr || emailErr || pwErr || confirmErr) {
       setErrors({
+        firstName: firstNameErr ?? undefined,
+        lastName: lastNameErr ?? undefined,
         email: emailErr ?? undefined,
         password: pwErr ?? undefined,
         confirm: confirmErr ?? undefined,
@@ -62,7 +77,10 @@ export function CreateAccount() {
 
     setSubmitting(true);
     try {
-      const result = await signUp(email.trim(), password);
+      const result = await signUp(email.trim(), password, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+      });
       if (result.needsEmailConfirmation) {
         setPendingEmail(email.trim());
       } else {
@@ -156,6 +174,37 @@ export function CreateAccount() {
         {formError && <Banner variant="error">{formError}</Banner>}
 
         <div className="field">
+          <label htmlFor={firstNameId}>First name</label>
+          <input
+            id={firstNameId}
+            type="text"
+            className={`input${errors.firstName ? " invalid" : ""}`}
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            autoComplete="given-name"
+            autoFocus
+            aria-invalid={errors.firstName ? true : undefined}
+            aria-describedby={errors.firstName ? `${firstNameId}-err` : undefined}
+          />
+          {errors.firstName && <FieldError id={`${firstNameId}-err`}>{errors.firstName}</FieldError>}
+        </div>
+
+        <div className="field">
+          <label htmlFor={lastNameId}>Last name</label>
+          <input
+            id={lastNameId}
+            type="text"
+            className={`input${errors.lastName ? " invalid" : ""}`}
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            autoComplete="family-name"
+            aria-invalid={errors.lastName ? true : undefined}
+            aria-describedby={errors.lastName ? `${lastNameId}-err` : undefined}
+          />
+          {errors.lastName && <FieldError id={`${lastNameId}-err`}>{errors.lastName}</FieldError>}
+        </div>
+
+        <div className="field">
           <label htmlFor={emailId}>Email</label>
           <input
             id={emailId}
@@ -164,7 +213,6 @@ export function CreateAccount() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
-            autoFocus
             aria-invalid={errors.email ? true : undefined}
             aria-describedby={errors.email ? `${emailId}-err` : undefined}
           />

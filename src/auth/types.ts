@@ -63,6 +63,12 @@ export interface SignUpResult {
   user: AuthUser | null;
 }
 
+/** Profile fields collected at signup and stored on the Supabase user. */
+export interface SignUpProfile {
+  firstName: string;
+  lastName: string;
+}
+
 export type OAuthProvider = "google";
 
 /**
@@ -79,7 +85,7 @@ export interface AuthProvider {
    */
   onAuthStateChange(handler: (user: AuthUser | null) => void): () => void;
 
-  signUp(email: string, password: string): Promise<SignUpResult>;
+  signUp(email: string, password: string, profile: SignUpProfile): Promise<SignUpResult>;
   signInWithPassword(email: string, password: string): Promise<AuthUser>;
   signOut(): Promise<void>;
 

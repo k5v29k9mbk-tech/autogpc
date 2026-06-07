@@ -8,6 +8,13 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Supabase's default minimum. Mirror it client-side so we fail fast. */
 export const MIN_PASSWORD_LENGTH = 8;
 
+export function validateName(value: string, label: string): string | null {
+  const v = value.trim();
+  if (!v) return `${label} is required.`;
+  if (v.length > 60) return `${label} is too long.`;
+  return null;
+}
+
 export function validateEmail(email: string): string | null {
   const v = email.trim();
   if (!v) return "Email is required.";
