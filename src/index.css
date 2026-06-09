@@ -1030,9 +1030,50 @@ details.collapsible[open] summary::before {
   }
 }
 
-/* Hero logo — the eagle mark. */
-.hero-logo-mark {
+/* Hero logo — the eagle mark draw-in. The accent stroke traces the outline,
+   then the cream fill fades in while the stroke dissolves. pathLength={1} on
+   the stroke path normalizes dasharray to 1 regardless of real path length. */
+.hero-logo-stroke {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    hero-logo-draw 2s ease forwards 0.3s,
+    hero-logo-stroke-out 0.6s ease forwards 2.4s;
+}
+
+.hero-logo-fill {
+  fill: var(--text);
+  opacity: 0;
   filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.55));
+  animation: hero-logo-fadein 0.6s ease forwards 2.2s;
+}
+
+@keyframes hero-logo-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes hero-logo-stroke-out {
+  to { opacity: 0; }
+}
+
+@keyframes hero-logo-fadein {
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-logo-stroke {
+    animation: none;
+    opacity: 0;
+  }
+  .hero-logo-fill {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* Section heading on Home ("Recent records" + View all). */
