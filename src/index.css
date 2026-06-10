@@ -970,9 +970,9 @@ details.collapsible[open] summary::before {
   font-weight: 600;
 }
 
-/* Lime eyebrow above the hero headline. A solid square "node" plus a short bold
-   tick leads the label — a deliberate blueprint marker that reads as intentional,
-   replacing the stray hairline dash that floated before. */
+/* Lime eyebrow above the hero headline. A solid square "node" leads the label —
+   a deliberate blueprint marker that reads as intentional, replacing the stray
+   hairline dash that floated before. */
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -991,15 +991,6 @@ details.collapsible[open] summary::before {
   width: 7px;
   height: 7px;
   background: var(--brand);
-}
-
-.hero-eyebrow::after {
-  content: "";
-  order: -1;
-  width: 16px;
-  height: 2px;
-  background: var(--brand);
-  margin-right: var(--s2);
 }
 
 /* Layered receipt + record card under a green aura. */
