@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, AuthError } from "../auth";
+import type { AuthUser } from "../auth/types";
 import { FieldError, PasswordInput } from "./auth/authShared";
 import {
   passwordStrength,
@@ -10,16 +11,45 @@ import {
 } from "../lib/validation";
 import { IconCheck, IconLogOut, IconMail, IconShield, IconUser } from "../components/icons";
 
+/**
+ * Best-effort first/last name for pre-filling the profile inputs. Uses the
+ * explicit fields when present; otherwise splits fullName ("Ada Lovelace" →
+ * ["Ada", "Lovelace"]); otherwise capitalizes the email's local part so the
+ * field is never blank on a fresh OAuth/legacy account.
+ */
+function deriveName(user: AuthUser | null): [string, string] {
+  if (!user) return ["", ""];
+  let first = user.firstName?.trim() ?? "";
+  let last = user.lastName?.trim() ?? "";
+  if (!first && !last) {
+    const full = user.fullName?.trim();
+    if (full) {
+      const parts = full.split(/\s+/);
+      first = parts[0] ?? "";
+      last = parts.slice(1).join(" ");
+    } else if (user.email) {
+      const local = user.email.split("@")[0]?.replace(/[._-]+/g, " ").trim();
+      if (local) first = local.charAt(0).toUpperCase() + local.slice(1);
+    }
+  }
+  return [first, last];
+}
+
 export function Account() {
   const { mode, user, requestPasswordReset, updatePassword, updateProfile, resendConfirmation, logout } =
     useAuth();
   const navigate = useNavigate();
 
   // --- profile (name) ---
+  // Prefer the explicit first/last fields, but when they're empty (common for
+  // OAuth or older accounts that only stored a full_name / email) fall back to
+  // splitting fullName, then the email's local part — so the inputs arrive
+  // pre-filled instead of blank.
+  const [seedFirst, seedLast] = deriveName(user);
   const firstNameId = useId();
   const lastNameId = useId();
-  const [firstName, setFirstName] = useState(user?.firstName ?? "");
-  const [lastName, setLastName] = useState(user?.lastName ?? "");
+  const [firstName, setFirstName] = useState(seedFirst);
+  const [lastName, setLastName] = useState(seedLast);
   const [profileState, setProfileState] = useState<"idle" | "saving" | "saved">("idle");
   const [profileErrors, setProfileErrors] = useState<{ firstName?: string; lastName?: string; form?: string }>(
     {},
@@ -46,8 +76,7 @@ export function Account() {
     navigate("/login", { replace: true });
   };
 
-  const profileDirty =
-    firstName.trim() !== (user?.firstName ?? "") || lastName.trim() !== (user?.lastName ?? "");
+  const profileDirty = firstName.trim() !== seedFirst || lastName.trim() !== seedLast;
 
   const saveProfile = async () => {
     const firstErr = validateName(firstName, "First name");

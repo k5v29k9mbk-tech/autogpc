@@ -85,11 +85,10 @@ export function Scan() {
   return (
     <div className="stack" style={{ gap: "var(--s5)" }}>
       <div className="page-head">
-        <div className="eyebrow">Step 1 of 2</div>
         <h1>Scan or upload a document</h1>
         <p className="sub">
-          Documents are read by AWS Textract for layout-aware field extraction, with in-browser
-          OCR / PDF text as an automatic fallback. Files are sent securely for processing.
+          AWS Textract extracts every field with layout-aware OCR — on-device fallback, encrypted in
+          transit.
         </p>
       </div>
 

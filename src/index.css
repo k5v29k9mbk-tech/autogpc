@@ -970,11 +970,13 @@ details.collapsible[open] summary::before {
   font-weight: 600;
 }
 
-/* Lime eyebrow with a leading rule, above the hero headline. */
+/* Lime eyebrow above the hero headline. A solid square "node" plus a short bold
+   tick leads the label — a deliberate blueprint marker that reads as intentional,
+   replacing the stray hairline dash that floated before. */
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
-  gap: var(--s3);
+  gap: var(--s2);
   margin-bottom: var(--s4);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -986,9 +988,18 @@ details.collapsible[open] summary::before {
 
 .hero-eyebrow::before {
   content: "";
-  width: 34px;
-  height: 1px;
+  width: 7px;
+  height: 7px;
   background: var(--brand);
+}
+
+.hero-eyebrow::after {
+  content: "";
+  order: -1;
+  width: 16px;
+  height: 2px;
+  background: var(--brand);
+  margin-right: var(--s2);
 }
 
 /* Layered receipt + record card under a green aura. */
@@ -1482,6 +1493,144 @@ details.collapsible[open] summary::before {
 
 .account-pop-item.danger {
   color: var(--danger);
+}
+
+.account-pop-sep {
+  height: 1px;
+  background: var(--border);
+  margin: var(--s2) 0;
+}
+
+/* --- Settings / Support rows ---------------------------------------------- */
+
+/* A label+hint on the left, a control (switch, segmented, select) on the right. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.setting-text {
+  min-width: 0;
+}
+
+.setting-label {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.setting-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.setting-control {
+  flex: none;
+}
+
+.setting-control .select {
+  width: auto;
+  min-width: 180px;
+}
+
+/* Square brutalist on/off switch — sharp corners, lime when on. */
+.switch {
+  width: 44px;
+  height: 24px;
+  padding: 2px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.switch:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.switch .switch-knob {
+  width: 18px;
+  height: 18px;
+  background: var(--text-muted);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.switch.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.switch.on .switch-knob {
+  transform: translateX(20px);
+  background: var(--accent);
+}
+
+/* FAQ accordion (native <details>). */
+.faq {
+  border-top: 1px solid var(--border);
+  padding: var(--s3) 0;
+}
+
+.faq:first-of-type {
+  border-top: 0;
+}
+
+.faq summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 14px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary::after {
+  content: "+";
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.faq[open] summary::after {
+  content: "–";
+}
+
+.faq p {
+  margin: var(--s3) 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+/* Resource list item with trailing external-link glyph. */
+.resource-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+  border-top: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+}
+
+.resource-link:first-of-type {
+  border-top: 0;
+}
+
+.resource-link:hover .setting-label {
+  color: var(--accent-text);
 }
 
 /* --- Responsive nav -------------------------------------------------------- */

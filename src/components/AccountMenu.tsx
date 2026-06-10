@@ -1,11 +1,17 @@
 // The top-nav account control: a single button (email or "Guest") that opens a
-// dropdown with Account settings + Sign out — replacing the old separate chip
-// and sign-out button. Closes on outside-click or Escape.
+// dropdown with Account / Settings / Support + Sign out — replacing the old
+// separate chip and sign-out button. Closes on outside-click or Escape.
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import { IconChevronRight, IconLogOut, IconShield, IconUser } from "./icons";
+import {
+  IconChevronRight,
+  IconLifebuoy,
+  IconLogOut,
+  IconSettings,
+  IconUser,
+} from "./icons";
 
 export function AccountMenu() {
   const { mode, user, logout } = useAuth();
@@ -78,10 +84,38 @@ export function AccountMenu() {
                 navigate("/account");
               }}
             >
-              <IconShield width={15} height={15} />
-              Account settings
+              <IconUser width={15} height={15} />
+              Account
             </button>
           )}
+
+          <button
+            type="button"
+            className="account-pop-item"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              navigate("/settings");
+            }}
+          >
+            <IconSettings width={15} height={15} />
+            Settings
+          </button>
+
+          <button
+            type="button"
+            className="account-pop-item"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              navigate("/support");
+            }}
+          >
+            <IconLifebuoy width={15} height={15} />
+            Support
+          </button>
+
+          <div className="account-pop-sep" />
 
           <button type="button" className="account-pop-item danger" role="menuitem" onClick={signOut}>
             <IconLogOut width={15} height={15} />

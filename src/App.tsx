@@ -17,6 +17,8 @@ const RecordDetail = lazy(() =>
   import("./screens/RecordDetail").then((m) => ({ default: m.RecordDetail })),
 );
 const Account = lazy(() => import("./screens/Account").then((m) => ({ default: m.Account })));
+const Settings = lazy(() => import("./screens/Settings").then((m) => ({ default: m.Settings })));
+const Support = lazy(() => import("./screens/Support").then((m) => ({ default: m.Support })));
 const Login = lazy(() => import("./screens/auth/Login").then((m) => ({ default: m.Login })));
 const CreateAccount = lazy(() =>
   import("./screens/auth/CreateAccount").then((m) => ({ default: m.CreateAccount })),
@@ -67,6 +69,8 @@ export default function App() {
           <Route path="records" element={<Records />} />
           <Route path="records/:id" element={<RecordDetail />} />
           <Route path="account" element={<Account />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="support" element={<Support />} />
           <Route path="*" element={<Home />} />
         </Route>
       </Routes>
