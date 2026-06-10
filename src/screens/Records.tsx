@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useStore } from "../store";
 import { DocTypeTag, SourceTag } from "../components/ui";
 import { IconChevronRight, IconReceipt, IconSearch } from "../components/icons";
-import { formatAmount } from "../lib/format";
+import { formatAmount, formatDateUS } from "../lib/format";
 import { STATUS_LABELS, STATUS_ORDER, type RecordStatus } from "../core/types";
 
 type Filter = "all" | RecordStatus;
@@ -20,7 +20,7 @@ export function Records() {
       if (!q) return true;
       return (
         r.vendor.toLowerCase().includes(q) ||
-        r.transactionDate.toLowerCase().includes(q) ||
+        formatDateUS(r.transactionDate).toLowerCase().includes(q) ||
         r.totalAmount.toLowerCase().includes(q) ||
         (r.currency ?? "").toLowerCase().includes(q)
       );
@@ -81,7 +81,7 @@ export function Records() {
               </span>
               <div>
                 <div className="rec-vendor">{r.vendor || "Untitled record"}</div>
-                <div className="rec-date">{r.transactionDate || "no date"}</div>
+                <div className="rec-date">{r.transactionDate ? formatDateUS(r.transactionDate) : "no date"}</div>
                 <div className="rec-meta">
                   <DocTypeTag docType={r.docType} />
                   <SourceTag source={r.source} />

@@ -5,6 +5,7 @@ import { recordFromDraft, type RecordEdits } from "../core/draft";
 import { useAuth } from "../auth";
 import { DEFAULT_ETO, ETO_OPTIONS, GPC_CURRENCIES } from "../lib/usbankOrder";
 import { Field, SourceTag } from "../components/ui";
+import { confidenceBucket, toISODate } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
 import { IconTrash } from "../components/icons";
 import {
@@ -37,7 +38,8 @@ export function Review() {
     const f = draft?.fields ?? {};
     return {
       vendor: f.vendor ?? "",
-      transactionDate: f.transactionDate ?? "",
+      // Normalize the extractor's date (any format) to ISO for the date picker.
+      transactionDate: toISODate(f.transactionDate),
       totalAmount: f.totalAmount ?? "",
       // Auto-grab the currency: use what the extractor read, else default to USD
       // (the GPC default) rather than leaving the reviewer on "— select —".
@@ -102,7 +104,9 @@ export function Review() {
         <div className="row" style={{ marginBottom: "var(--s4)" }}>
           <SourceTag source={draft.source} />
           {draft.confidence != null && (
-            <span className="tag">OCR confidence {Math.round(draft.confidence * 100)}%</span>
+            <span className="tag" title={`${Math.round(draft.confidence * 100)}% reported by the extractor`}>
+              {confidenceBucket(draft.confidence)} confidence
+            </span>
           )}
           <div className="spacer" />
           <span className="muted" style={{ fontSize: 12 }}>{extractedCount} fields auto-filled</span>
@@ -152,7 +156,7 @@ export function Review() {
             </select>
           </Field>
           <Field label="Transaction date" valid={!!form.transactionDate.trim()}>
-            <input className="input mono" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} placeholder="MM/DD/YYYY · DD.MM.YYYY · YYYY-MM-DD" />
+            <input type="date" className="input" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} />
           </Field>
           <Field label="Document type">
             <select className="select" value={form.docType} onChange={(e) => set("docType", e.target.value as DocType)}>

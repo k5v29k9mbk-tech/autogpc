@@ -22,10 +22,13 @@ export function StatusBadge({ status }: { status: RecordStatus }) {
 
 export function SourceTag({ source }: { source: ExtractionSource }) {
   const Icon = source === "pdf_text" ? IconFile : source === "tesseract" ? IconImage : IconFile;
+  // Older/guest records may carry a source no longer in the map — never render
+  // an empty, label-less chip.
+  const label = SOURCE_LABELS[source] ?? "Unknown source";
   return (
-    <span className="tag" title={`Extraction source: ${SOURCE_LABELS[source]}`}>
+    <span className="tag" title={`Extraction source: ${label}`}>
       <Icon width={12} height={12} />
-      {SOURCE_LABELS[source]}
+      {label}
     </span>
   );
 }

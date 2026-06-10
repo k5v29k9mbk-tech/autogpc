@@ -122,8 +122,8 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
 
 export const SOURCE_LABELS: Record<ExtractionSource, string> = {
   pdf_text: "PDF text layer",
-  tesseract: "OCR (Tesseract)",
-  cloud: "Cloud extractor",
+  tesseract: "On-device OCR",
+  cloud: "AWS Textract",
 };
 
 export function emptyChecklist(): DocumentChecklist {

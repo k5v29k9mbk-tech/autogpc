@@ -4,7 +4,7 @@ import { useStore } from "../store";
 import { RecordImage } from "../components/RecordImage";
 import { DocTypeTag, Field, SourceTag, StatusBadge } from "../components/ui";
 import { IconArrowLeft, IconCheck, IconCopy, IconDownload, IconTrash } from "../components/icons";
-import { formatAmount, orDash } from "../lib/format";
+import { formatAmount, formatDateUS, orDash, toISODate } from "../lib/format";
 import { documentsMissing, documentsPresent, toJson, toStructuredText } from "../lib/exportRecord";
 import { USBANK_ENABLED, UsBankOrderCard } from "../components/UsBankOrderCard";
 import { Section889Field } from "../components/Section889Field";
@@ -139,7 +139,7 @@ export function RecordDetail() {
           {editing ? (
             <div className="grid cols-2">
               <Field label="Vendor"><input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} /></Field>
-              <Field label="Transaction date"><input className="input mono" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} /></Field>
+              <Field label="Transaction date"><input type="date" className="input" value={toISODate(form.transactionDate)} onChange={(e) => set("transactionDate", e.target.value)} /></Field>
               <Field label="Total"><input className="input mono" value={form.totalAmount} onChange={(e) => set("totalAmount", e.target.value)} /></Field>
               <Field label="Currency">
                 <select className="select" value={form.currency} onChange={(e) => set("currency", e.target.value)}>
@@ -163,7 +163,7 @@ export function RecordDetail() {
           ) : (
             <dl className="kv">
               <dt>Vendor</dt><dd>{orDash(record.vendor)}</dd>
-              <dt>Transaction date</dt><dd>{orDash(record.transactionDate)}</dd>
+              <dt>Transaction date</dt><dd>{formatDateUS(record.transactionDate)}</dd>
               <dt>Total</dt><dd>{formatAmount(record.totalAmount, record.currency)}</dd>
               <dt>Currency</dt><dd>{orDash(record.currency)}</dd>
               <dt>Card last 4</dt><dd>{orDash(record.cardLast4)}</dd>

@@ -146,8 +146,8 @@ export function Scan() {
                 </div>
                 <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
                   {isPdf
-                    ? "PDF — will try the text layer first (no OCR)."
-                    : "Image — will run preprocessing + Tesseract OCR."}
+                    ? "PDF — sent to AWS Textract; falls back to the embedded text layer if needed."
+                    : "Image — sent to AWS Textract; falls back to on-device OCR if needed."}
                 </div>
               </div>
 
