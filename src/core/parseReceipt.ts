@@ -271,26 +271,54 @@ export function parseReceiptNumber(text: string): string | null {
 const VENDOR_SKIP =
   /^(?:receipt|invoice|quote|quotation|rechnung|beleg|bon|order|tax\s*invoice|customer\s*copy|merchant\s*copy)$/i;
 
-export function parseVendor(text: string): string | null {
-  const lines = cleanLines(text);
+const CONTACT_LINE = /@|\bwww\.|https?:|\b(phone|tel|fax)\b/i;
+
+// Casing tiers for vendor candidates. Tier 1: ALL-CAPS storefront banner
+// ("EXCHANGE") — how receipt headers are usually printed. Tier 2: normal
+// mixed-case print ("toom Baumarkt", "Better Direct LLC"). Tier 3: odd casing
+// — a lowercase→uppercase flip inside a word ("muteR" is mirrored "Return"
+// read through thermal-paper bleed-through). Tier 4: all-lowercase noise or
+// digit-led lines (street addresses, never names).
+function vendorTier(c: string): number {
+  if (/^\d/.test(c)) return 4;
+  if (!/[A-ZÀ-Þ]/.test(c)) return 4;
+  if (!/[a-zà-ÿ]/.test(c)) return 1;
+  const oddCased = c.split(/\s+/).some((w) => /[a-zà-ÿ][A-ZÀ-Þ]/.test(w));
+  return oddCased ? 3 : 2;
+}
+
+function pickVendor(lines: string[]): string | null {
   const candidates: string[] = [];
-  for (let i = 0; i < Math.min(lines.length, 8); i++) {
-    const line = lines[i];
+  for (const line of lines) {
     const letters = (line.match(/[A-Za-zÀ-ÿ]/g) || []).length;
     if (letters < 3) continue; // skip pure numbers / separators
     if (VENDOR_SKIP.test(line)) continue;
     if (DATE_RES.some((re) => re.test(line))) continue;
     if (/^[\d\s.,:/-]+$/.test(line)) continue;
-    if (/@|\bwww\.|https?:|\b(phone|tel)\b/i.test(line)) continue; // contact lines
+    if (CONTACT_LINE.test(line)) continue;
+    if (/\d+[.,]\d{2}/.test(line)) continue; // monetary lines are never names
     candidates.push(line.replace(/\s{2,}/g, " ").slice(0, 60));
   }
-  // Printed storefront headers carry capitals; an all-lowercase line this high
-  // on the page is usually OCR noise (e.g. thermal-paper bleed-through). Lines
-  // starting with a digit look like street addresses, not names — don't let
-  // them outrank an earlier candidate.
-  return (
-    candidates.find((c) => /[A-ZÀ-Þ]/.test(c) && !/^\d/.test(c)) ?? candidates[0] ?? null
-  );
+  for (const tier of [1, 2, 3, 4]) {
+    const hit = candidates.find((c) => vendorTier(c) === tier);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+export function parseVendor(text: string): string | null {
+  const lines = cleanLines(text);
+  // Storefront headers sit immediately above the contact block (phone / web /
+  // email). Scanned thermal receipts often carry MANY lines of mirrored
+  // bleed-through from the back of the paper above the real header, so "first
+  // plausible line on the page" is unreliable — when a contact block exists,
+  // search the few lines just above it instead.
+  const anchor = lines.findIndex((l) => CONTACT_LINE.test(l));
+  if (anchor > 0) {
+    const fromAnchor = pickVendor(lines.slice(Math.max(0, anchor - 4), anchor));
+    if (fromAnchor) return fromAnchor;
+  }
+  return pickVendor(lines.slice(0, 8));
 }
 
 // Conservative line-item heuristic. Better to under-extract than to invent

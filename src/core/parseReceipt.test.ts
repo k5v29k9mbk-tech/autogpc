@@ -96,6 +96,25 @@ describe("parseVendor", () => {
   it("prefers a capitalized header over lowercase OCR noise (bleed-through)", () => {
     expect(parseVendor("pnivotomi\nerit to eulav\nEXCHANGE\nRamstein MCSS")).toBe("EXCHANGE");
   });
+  it("deprioritizes odd-cased bleed-through tokens like 'muteR'", () => {
+    expect(parseVendor("muteR\nEXCHANGE\nRamstein KMCC Mall")).toBe("EXCHANGE");
+  });
+  it("anchors on the contact block when bleed-through floods the top of the page", () => {
+    const raw = [
+      "give back ot ytinummoc yratilim",
+      "Customer Satisfaction Guaranteed", // mirrored junk can OCR clean-cased
+      "For complete information muteR",
+      "beetnsnsuO noitostzitsS",
+      "Policy Shipping and Delivery",
+      "Frequently Asked Questions visit",
+      "EXCHANGE",
+      "Ramstein KMCC Mall",
+      "Brian A Smith",
+      "PHONE: +49(0)6371-4079 x103",
+      "WWW.SHOPMYEXCHANGE.COM",
+    ].join("\n");
+    expect(parseVendor(raw)).toBe("EXCHANGE");
+  });
   it("skips contact lines (email / web / phone)", () => {
     const raw = ["carlonw@aafes.com", "PHONE: 06371-4079300", "WWW.SHOPMYEXCHANGE.COM", "EXCHANGE"].join("\n");
     expect(parseVendor(raw)).toBe("EXCHANGE");

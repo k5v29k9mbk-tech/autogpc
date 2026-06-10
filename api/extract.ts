@@ -47,6 +47,19 @@ function amount(s?: string): string {
   return clean(s).replace(/[^0-9.,-]/g, "");
 }
 
+// Thermal-receipt scans often carry mirrored bleed-through from the back of
+// the paper; Textract can label a piece of it VENDOR_NAME (e.g. "muteR" —
+// mirrored "Return"). Reject obvious noise: a blank field the reviewer fills
+// beats a confidently wrong one. Single all-lowercase tokens and tokens with a
+// lowercase→uppercase flip at the end are bleed-through signatures, not names.
+function plausibleVendor(v: string): boolean {
+  if ((v.match(/[A-Za-zÀ-ÿ]/g) || []).length < 2) return false;
+  if (/\s/.test(v)) return true; // multi-word names pass
+  if (/^[a-zà-ÿ]+$/.test(v)) return false;
+  if (/^[a-zà-ÿ]+[A-ZÀ-Þ]{1,2}$/.test(v)) return false;
+  return true;
+}
+
 // Prefer the document's real OCR lines (ExpenseDocument.Blocks) so rawText
 // reads top-to-bottom like the printed receipt — that lets the client's regex
 // parser fill gaps positionally (e.g. vendor = top line). Only when Blocks are
@@ -56,9 +69,11 @@ function buildRawText(doc?: ExpenseDocument): { text: string; source: "document"
   // Confidence floor: scanned thermal receipts often carry mirrored bleed-
   // through from the back of the paper, which OCRs as gibberish lines ABOVE
   // the real header and then poisons position-based parsing (e.g. vendor =
-  // top line). Genuine print scores high-90s; bleed-through scores low.
+  // top line). Genuine print scores high-90s; bleed-through usually lower —
+  // but it can reach the 80s, so this floor is one layer, not the whole
+  // defense (parseVendor anchors on the contact block client-side).
   const ocrLines = (doc?.Blocks ?? [])
-    .filter((b) => b.BlockType === "LINE" && b.Text && (b.Confidence ?? 100) >= 70)
+    .filter((b) => b.BlockType === "LINE" && b.Text && (b.Confidence ?? 100) >= 85)
     .map((b) => clean(b.Text));
   if (ocrLines.length) return { text: ocrLines.join("\n"), source: "document" };
 
@@ -79,7 +94,7 @@ function buildRawText(doc?: ExpenseDocument): { text: string; source: "document"
   return { text: lines.join("\n"), source: "summary" };
 }
 
-function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
+export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
   const doc = out.ExpenseDocuments?.[0];
   const fields: Record<string, string | null> = {};
   const confidences: number[] = [];
@@ -93,12 +108,13 @@ function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
 
     switch (type) {
       case "VENDOR_NAME":
-        // Authoritative — but never clobber a previous hit with an empty value.
-        if (clean(value)) fields.vendor = clean(value);
+        // Authoritative — but never clobber a previous hit with an empty or
+        // implausible (bleed-through) value.
+        if (plausibleVendor(clean(value))) fields.vendor = clean(value);
         break;
       case "NAME":
         // Generic NAME can be the customer/recipient; only fill a gap with it.
-        if (!fields.vendor && clean(value)) fields.vendor = clean(value);
+        if (!fields.vendor && plausibleVendor(clean(value))) fields.vendor = clean(value);
         break;
       case "TOTAL":
         fields.totalAmount = amount(value);

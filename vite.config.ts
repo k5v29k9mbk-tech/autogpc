@@ -10,7 +10,8 @@ export default defineConfig({
   },
   test: {
     // parseReceipt is pure — runs in a plain node environment, no DOM needed.
+    // api/ covers the serverless Textract mapping (pure functions only).
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "api/**/*.test.ts"],
   },
 });
