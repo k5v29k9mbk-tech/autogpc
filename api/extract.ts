@@ -79,8 +79,12 @@ function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
 
     switch (type) {
       case "VENDOR_NAME":
+        // Authoritative — but never clobber a previous hit with an empty value.
+        if (clean(value)) fields.vendor = clean(value);
+        break;
       case "NAME":
-        fields.vendor = clean(value);
+        // Generic NAME can be the customer/recipient; only fill a gap with it.
+        if (!fields.vendor && clean(value)) fields.vendor = clean(value);
         break;
       case "TOTAL":
         fields.totalAmount = amount(value);

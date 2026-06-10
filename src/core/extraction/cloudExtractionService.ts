@@ -127,7 +127,12 @@ export const cloudExtractionService: ExtractionService = {
     onProgress?.({ stage: "parsing", progress: 1 });
 
     // parseReceipt as a fallback: cloud-detected fields win, regex fills gaps.
+    // Exception: the vendor heuristic assumes the storefront name is the top
+    // printed line, but cloud rawText is a synthetic "TYPE: value" summary list
+    // whose first line is arbitrary (e.g. "AMOUNT_PAID: 555.65") — so a missing
+    // vendor stays blank for review rather than being filled with a wrong guess.
     const base = resultFromText(cloud.rawText, "cloud", cloud.confidence);
+    base.fields.vendor = "";
     const fields = { ...base.fields, ...nonEmpty(cloud.fields) };
     const lineItems = cloud.lineItems?.length ? cloud.lineItems : base.lineItems;
 
