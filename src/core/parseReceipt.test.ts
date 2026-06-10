@@ -93,6 +93,16 @@ describe("parseVendor", () => {
       "United Office Solutions",
     );
   });
+  it("prefers a capitalized header over lowercase OCR noise (bleed-through)", () => {
+    expect(parseVendor("pnivotomi\nerit to eulav\nEXCHANGE\nRamstein MCSS")).toBe("EXCHANGE");
+  });
+  it("skips contact lines (email / web / phone)", () => {
+    const raw = ["carlonw@aafes.com", "PHONE: 06371-4079300", "WWW.SHOPMYEXCHANGE.COM", "EXCHANGE"].join("\n");
+    expect(parseVendor(raw)).toBe("EXCHANGE");
+  });
+  it("still accepts an all-lowercase vendor when nothing capitalized exists", () => {
+    expect(parseVendor("toom baumarkt\n123 Main St")).toBe("toom baumarkt");
+  });
 });
 
 describe("parseReceipt — full documents", () => {
@@ -158,5 +168,18 @@ describe("parseReceipt — full documents", () => {
     expect(r.taxAmount).toBeNull();
     expect(r.lineItems.length).toBeGreaterThanOrEqual(2);
     expect(r.lineItems[0]).toMatchObject({ quantity: "2", total: "178.00" });
+  });
+
+  it("excludes discount / refund-value adjustment rows from line items", () => {
+    const raw = [
+      "EXCHANGE",
+      "TAC SLING PK, MCN     24.95",
+      "Trans Disc.           -2.50",
+      "YOUR REFUND VALUE     22.45",
+      "TOTAL              $22.45",
+    ].join("\n");
+    const r = parseReceipt(raw);
+    expect(r.lineItems).toHaveLength(1);
+    expect(r.lineItems[0].description).toContain("TAC SLING");
   });
 });

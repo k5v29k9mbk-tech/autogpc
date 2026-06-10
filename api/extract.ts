@@ -53,8 +53,12 @@ function amount(s?: string): string {
 // missing do we fall back to a synthetic "TYPE: value" summary list, flagged
 // via `source` so the client skips position-based heuristics on it.
 function buildRawText(doc?: ExpenseDocument): { text: string; source: "document" | "summary" } {
+  // Confidence floor: scanned thermal receipts often carry mirrored bleed-
+  // through from the back of the paper, which OCRs as gibberish lines ABOVE
+  // the real header and then poisons position-based parsing (e.g. vendor =
+  // top line). Genuine print scores high-90s; bleed-through scores low.
   const ocrLines = (doc?.Blocks ?? [])
-    .filter((b) => b.BlockType === "LINE" && b.Text)
+    .filter((b) => b.BlockType === "LINE" && b.Text && (b.Confidence ?? 100) >= 70)
     .map((b) => clean(b.Text));
   if (ocrLines.length) return { text: ocrLines.join("\n"), source: "document" };
 
@@ -118,6 +122,11 @@ function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
   }
   if (currency) fields.currency = currency;
 
+  // Adjustment rows Textract reports as "items" but aren't purchases —
+  // discounts, refund-value notes, surcharges, savings summaries.
+  const ADJUSTMENT_ROW =
+    /\b(trans\.?\s*disc\w*|discount|refund|unit\s*charge|total\s*savings)\b/i;
+
   const lineItems: LineItem[] = [];
   for (const g of doc?.LineItemGroups ?? []) {
     for (const li of g.LineItems ?? []) {
@@ -130,6 +139,11 @@ function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
         else if (t === "UNIT_PRICE") row.unitPrice = amount(v) || null;
         else if (t === "PRICE") row.total = amount(v) || null;
       }
+      // Textract sometimes folds the qty line into ITEM ("... 4 @ 22.46 =");
+      // qty/unit price are captured in their own fields, so strip the suffix.
+      row.description = row.description.replace(/\s+\d{1,4}\s*@\s*[\d.,]+\s*=?\s*$/, "");
+      if (ADJUSTMENT_ROW.test(row.description)) continue;
+      if (row.total?.startsWith("-")) continue; // negative rows are discounts
       if (row.description || row.total) lineItems.push(row);
     }
   }

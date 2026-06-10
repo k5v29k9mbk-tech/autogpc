@@ -273,29 +273,45 @@ const VENDOR_SKIP =
 
 export function parseVendor(text: string): string | null {
   const lines = cleanLines(text);
-  for (let i = 0; i < Math.min(lines.length, 6); i++) {
+  const candidates: string[] = [];
+  for (let i = 0; i < Math.min(lines.length, 8); i++) {
     const line = lines[i];
     const letters = (line.match(/[A-Za-zÀ-ÿ]/g) || []).length;
     if (letters < 3) continue; // skip pure numbers / separators
     if (VENDOR_SKIP.test(line)) continue;
     if (DATE_RES.some((re) => re.test(line))) continue;
     if (/^[\d\s.,:/-]+$/.test(line)) continue;
-    // Looks like a name / storefront line.
-    return line.replace(/\s{2,}/g, " ").slice(0, 60);
+    if (/@|\bwww\.|https?:|\b(phone|tel)\b/i.test(line)) continue; // contact lines
+    candidates.push(line.replace(/\s{2,}/g, " ").slice(0, 60));
   }
-  return null;
+  // Printed storefront headers carry capitals; an all-lowercase line this high
+  // on the page is usually OCR noise (e.g. thermal-paper bleed-through). Lines
+  // starting with a digit look like street addresses, not names — don't let
+  // them outrank an earlier candidate.
+  return (
+    candidates.find((c) => /[A-ZÀ-Þ]/.test(c) && !/^\d/.test(c)) ?? candidates[0] ?? null
+  );
 }
 
 // Conservative line-item heuristic. Better to under-extract than to invent
 // rows; the review screen lets a user add what we miss.
 export function parseLineItems(text: string): LineItem[] {
-  const lines = cleanLines(text);
+  // Unlike cleanLines, keep internal spacing: the 2+-space column gap is the
+  // description/price separator that simpleRow keys on.
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   const items: LineItem[] = [];
   const qtyRow = /^(.{2,48}?)\s+(\d{1,4})\s*[xX@]\s*([€$£]?\s*[\d.,]+)\s+([€$£]?\s*[\d.,]+)$/;
   const simpleRow = /^(.{3,48}?)\s{2,}([€$£]?\s*\d[\d.,]*[.,]\d{2})$/;
 
   for (const line of lines) {
     if (/\b(sub)?total|tax|vat|mwst|balance|amount\s*due|summe|gesamt|change|tender|cash|card/i.test(line)) {
+      continue;
+    }
+    // Adjustment rows, not purchases: discounts, refund-value notes, surcharges.
+    if (/\b(trans\.?\s*disc\w*|discount|refund|unit\s*charge|savings)\b/i.test(line)) {
       continue;
     }
     const q = line.match(qtyRow);
