@@ -180,6 +180,23 @@ export const supabaseAuthProvider: AuthProvider = {
     if (error) throw mapError(error, "Could not update your password.");
   },
 
+  async updateProfile(profile: SignUpProfile): Promise<AuthUser> {
+    const firstName = profile.firstName.trim();
+    const lastName = profile.lastName.trim();
+    const { data, error } = await getSupabaseClient().auth.updateUser({
+      // Mirror the metadata shape signUp writes so toAuthUser reads it back.
+      data: {
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`.trim(),
+      },
+    });
+    if (error) throw mapError(error, "Could not update your profile.");
+    const user = toAuthUser(data.user);
+    if (!user) throw new AuthError("unknown", "Profile updated but no user was returned.");
+    return user;
+  },
+
   async completeEmailConfirmation(url: string): Promise<AuthUser> {
     const parsed = new URL(url);
     const params = parsed.searchParams;

@@ -1209,7 +1209,7 @@ details.collapsible[open] summary::before {
   gap: var(--s3);
   color: var(--text-faint);
   font-size: 12px;
-  margin: var(--s5) 0;
+  margin: var(--s4) 0;
 }
 
 .auth-or::before,

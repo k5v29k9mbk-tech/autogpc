@@ -112,6 +112,13 @@ export interface AuthProvider {
   updatePassword(newPassword: string): Promise<void>;
 
   /**
+   * Update the signed-in user's profile (name) in the current session. Writes
+   * the same metadata shape signUp does (first_name/last_name/full_name) and
+   * returns the refreshed user. Throws AuthError on failure.
+   */
+  updateProfile(profile: SignUpProfile): Promise<AuthUser>;
+
+  /**
    * Complete an email-confirmation redirect: exchange the callback URL for a
    * session. Returns the confirmed user. Throws AuthError on failure.
    */

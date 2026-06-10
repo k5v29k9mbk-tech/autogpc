@@ -50,6 +50,7 @@ interface AuthContextValue {
   completeEmailConfirmation: (url: string) => Promise<AuthUser>;
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
+  updateProfile: (profile: SignUpProfile) => Promise<AuthUser>;
   /** Current session access token (for the SSO handoff), or null. */
   getAccessToken: () => Promise<string | null>;
 
@@ -169,6 +170,12 @@ export function AuthProviderComponent({
     [],
   );
 
+  const updateProfile = useCallback(async (profile: SignUpProfile) => {
+    const u = await providerRef.current.updateProfile(profile);
+    setUser(u);
+    return u;
+  }, []);
+
   const getAccessToken = useCallback(() => providerRef.current.getAccessToken(), []);
 
   const mode: AuthMode = user ? "authenticated" : isGuest ? "guest" : "anonymous";
@@ -189,6 +196,7 @@ export function AuthProviderComponent({
       signInWithOAuth,
       requestPasswordReset,
       updatePassword,
+      updateProfile,
       getAccessToken,
     }),
     [
@@ -205,6 +213,7 @@ export function AuthProviderComponent({
       signInWithOAuth,
       requestPasswordReset,
       updatePassword,
+      updateProfile,
       getAccessToken,
     ],
   );
