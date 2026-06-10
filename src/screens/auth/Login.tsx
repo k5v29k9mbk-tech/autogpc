@@ -171,12 +171,9 @@ export function Login() {
       {/* Guest sits directly under the form — it's the primary way to try the
           app, so it ranks above the not-yet-live SSO providers below. */}
       <div className="auth-or">or</div>
-      <button type="button" className="btn btn-ghost btn-block" onClick={goGuest}>
+      <button type="button" className="btn btn-ghost btn-lg btn-block" onClick={goGuest}>
         Continue as guest
       </button>
-      <p className="pw-hint" style={{ textAlign: "center", marginTop: "var(--s2)" }}>
-        Guest mode won't save your records to an account.
-      </p>
 
       <ProviderSeams onGoogle={configured ? goOAuth("google") : undefined} busy={oauthBusy} />
     </AuthShell>
