@@ -47,7 +47,17 @@ function amount(s?: string): string {
   return clean(s).replace(/[^0-9.,-]/g, "");
 }
 
-function buildRawText(doc?: ExpenseDocument): string {
+// Prefer the document's real OCR lines (ExpenseDocument.Blocks) so rawText
+// reads top-to-bottom like the printed receipt — that lets the client's regex
+// parser fill gaps positionally (e.g. vendor = top line). Only when Blocks are
+// missing do we fall back to a synthetic "TYPE: value" summary list, flagged
+// via `source` so the client skips position-based heuristics on it.
+function buildRawText(doc?: ExpenseDocument): { text: string; source: "document" | "summary" } {
+  const ocrLines = (doc?.Blocks ?? [])
+    .filter((b) => b.BlockType === "LINE" && b.Text)
+    .map((b) => clean(b.Text));
+  if (ocrLines.length) return { text: ocrLines.join("\n"), source: "document" };
+
   const lines: string[] = [];
   for (const f of doc?.SummaryFields ?? []) {
     const label = clean(f.Type?.Text ?? f.LabelDetection?.Text);
@@ -62,7 +72,7 @@ function buildRawText(doc?: ExpenseDocument): string {
       if (cells.length) lines.push(cells.join("  "));
     }
   }
-  return lines.join("\n");
+  return { text: lines.join("\n"), source: "summary" };
 }
 
 function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
@@ -129,7 +139,8 @@ function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
       ? confidences.reduce((a, b) => a + b, 0) / confidences.length / 100
       : undefined;
 
-  return { fields, rawText: buildRawText(doc), lineItems, confidence };
+  const raw = buildRawText(doc);
+  return { fields, rawText: raw.text, rawTextSource: raw.source, lineItems, confidence };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

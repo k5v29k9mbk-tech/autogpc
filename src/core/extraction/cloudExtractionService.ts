@@ -29,6 +29,8 @@ import type { LineItem, PurchaseRecord } from "../types";
 type CloudResponse = {
   fields: Partial<PurchaseRecord>;
   rawText: string;
+  /** "document" = real OCR lines in reading order; "summary" = synthetic "TYPE: value" list. */
+  rawTextSource?: "document" | "summary";
   lineItems: LineItem[];
   confidence?: number;
 };
@@ -128,11 +130,12 @@ export const cloudExtractionService: ExtractionService = {
 
     // parseReceipt as a fallback: cloud-detected fields win, regex fills gaps.
     // Exception: the vendor heuristic assumes the storefront name is the top
-    // printed line, but cloud rawText is a synthetic "TYPE: value" summary list
-    // whose first line is arbitrary (e.g. "AMOUNT_PAID: 555.65") — so a missing
-    // vendor stays blank for review rather than being filled with a wrong guess.
+    // printed line, which only holds when rawText is the document's real OCR
+    // lines. On the synthetic "TYPE: value" summary fallback the first line is
+    // arbitrary (e.g. "AMOUNT_PAID: 555.65") — leave vendor blank for review
+    // rather than filling it with a wrong guess.
     const base = resultFromText(cloud.rawText, "cloud", cloud.confidence);
-    base.fields.vendor = "";
+    if (cloud.rawTextSource !== "document") base.fields.vendor = "";
     const fields = { ...base.fields, ...nonEmpty(cloud.fields) };
     const lineItems = cloud.lineItems?.length ? cloud.lineItems : base.lineItems;
 
