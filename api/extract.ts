@@ -55,9 +55,14 @@ function amount(s?: string): string {
 function plausibleVendor(v: string): boolean {
   if ((v.match(/[A-Za-zÀ-ÿ]/g) || []).length < 2) return false;
   if (/\s/.test(v)) return true; // multi-word names pass
-  if (/^[a-zà-ÿ]+$/.test(v)) return false;
+  if (!/[A-ZÀ-Þ]/.test(v)) return false; // no capital at all ("gorl2", "pnivotomi")
   if (/^[a-zà-ÿ]+[A-ZÀ-Þ]{1,2}$/.test(v)) return false;
   return true;
+}
+
+/** Lowercase and strip everything but letters/digits, for fuzzy containment. */
+function normalizeForMatch(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9à-ÿ]/g, "");
 }
 
 // Prefer the document's real OCR lines (ExpenseDocument.Blocks) so rawText
@@ -170,6 +175,19 @@ export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
       : undefined;
 
   const raw = buildRawText(doc);
+
+  // Corroboration gate: a real vendor name is printed on the receipt, so it
+  // must appear among the high-confidence OCR lines. When Textract mislabels
+  // mirrored bleed-through as VENDOR_NAME (e.g. "gorl2"), that text comes from
+  // exactly the lines the confidence floor dropped — so it won't be found here.
+  // Shape-based plausibleVendor() can't enumerate every gibberish form; this
+  // check rejects it on provenance instead.
+  if (fields.vendor && raw.source === "document") {
+    if (!normalizeForMatch(raw.text).includes(normalizeForMatch(fields.vendor))) {
+      delete fields.vendor;
+    }
+  }
+
   return { fields, rawText: raw.text, rawTextSource: raw.source, lineItems, confidence };
 }
 

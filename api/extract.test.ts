@@ -31,6 +31,30 @@ describe("mapAnalyzeExpense — vendor plausibility", () => {
     expect(multi.fields.vendor).toBe("toom Baumarkt");
   });
 
+  it("rejects lowercase tokens with digits ('gorl2')", () => {
+    const r = mapAnalyzeExpense(fakeOutput({ SummaryFields: [summaryField("VENDOR_NAME", "gorl2")] }));
+    expect(r.fields.vendor).toBeUndefined();
+  });
+
+  it("rejects a vendor not corroborated by the high-confidence OCR text", () => {
+    const blocks = [
+      { BlockType: "LINE", Text: "EXCHANGE", Confidence: 99 },
+      { BlockType: "LINE", Text: "Ramstein KMCC Mall", Confidence: 98 },
+      { BlockType: "LINE", Text: "TOTAL 40.45", Confidence: 99 },
+    ];
+    // "Gorl2x" passes shape checks but appears nowhere in the real OCR lines.
+    const bad = mapAnalyzeExpense(
+      fakeOutput({ SummaryFields: [summaryField("VENDOR_NAME", "Gorl2x")], Blocks: blocks }),
+    );
+    expect(bad.fields.vendor).toBeUndefined();
+
+    // Corroboration is fuzzy: case and punctuation differences still match.
+    const ok = mapAnalyzeExpense(
+      fakeOutput({ SummaryFields: [summaryField("VENDOR_NAME", "Exchange")], Blocks: blocks }),
+    );
+    expect(ok.fields.vendor).toBe("Exchange");
+  });
+
   it("does not let generic NAME overwrite VENDOR_NAME", () => {
     const r = mapAnalyzeExpense(
       fakeOutput({
