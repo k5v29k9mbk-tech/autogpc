@@ -5,13 +5,14 @@ import { routeExtraction } from "../core/extraction/extractionRouter";
 import { draftFromResult } from "../core/draft";
 import type { ExtractionProgress } from "../core/extraction/extractionService";
 import { renderPdfThumbnail } from "../lib/pdfThumbnail";
-import { SOURCE_LABELS } from "../core/types";
 import { IconFile, IconImage, IconUpload } from "../components/icons";
 
+// ponytail: intentionally generic — these labels must not name the engine or
+// pipeline (see subtitle/hint copy below) so the extraction method stays opaque.
 const STAGE_TEXT: Record<ExtractionProgress["stage"], string> = {
-  loading: "Loading engine",
-  preprocessing: "Cleaning up the image",
-  recognizing: "Reading text",
+  loading: "Preparing",
+  preprocessing: "Optimizing the image",
+  recognizing: "Reading the document",
   parsing: "Structuring fields",
   done: "Done",
 };
@@ -87,8 +88,8 @@ export function Scan() {
       <div className="page-head">
         <h1>Scan or upload a document</h1>
         <p className="sub">
-          AWS Textract extracts every field with layout-aware OCR — on-device fallback, encrypted in
-          transit.
+          Drop in a receipt, invoice, or PDF and we'll pull out the fields for you to review.
+          Encrypted in transit.
         </p>
       </div>
 
@@ -144,9 +145,7 @@ export function Scan() {
                   <span style={{ fontWeight: 600, wordBreak: "break-all" }}>{file.name}</span>
                 </div>
                 <div className="muted" style={{ fontSize: 13, marginTop: 4 }}>
-                  {isPdf
-                    ? "PDF — sent to AWS Textract; falls back to the embedded text layer if needed."
-                    : "Image — sent to AWS Textract; falls back to on-device OCR if needed."}
+                  {isPdf ? "PDF ready to extract." : "Image ready to extract."}
                 </div>
               </div>
 
@@ -168,7 +167,7 @@ export function Scan() {
                     />
                   </div>
                   <div className="muted" style={{ fontSize: 12 }}>
-                    Extracting fields with Textract — falls back to on-device reading if needed.
+                    Reading the document and structuring the fields…
                   </div>
                 </div>
               )}
@@ -195,10 +194,6 @@ export function Scan() {
                   </button>
                 </div>
               )}
-
-              <div className="muted" style={{ fontSize: 12, marginTop: "var(--s2)" }}>
-                Engine routing: {SOURCE_LABELS.cloud} → {SOURCE_LABELS.pdf_text} / {SOURCE_LABELS.tesseract}.
-              </div>
             </div>
           </div>
         </div>

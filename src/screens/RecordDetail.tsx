@@ -117,12 +117,21 @@ export function RecordDetail() {
         </div>
         <div className="spacer" />
         <div className="row wrap">
-          {!editing && (
+          {!editing && !confirmDelete && (
             <button className="btn btn-sm" onClick={() => setEditing(true)}>Edit</button>
           )}
-          <button className="btn btn-sm btn-danger" onClick={() => setConfirmDelete(true)}>
-            <IconTrash width={15} height={15} /> Delete
-          </button>
+          {/* Confirm inline, right where the Delete button is — not in a far-off toast. */}
+          {confirmDelete ? (
+            <div className="row" style={{ gap: "var(--s2)" }}>
+              <span className="muted" style={{ fontSize: 13 }}>Delete this record?</span>
+              <button className="btn btn-sm btn-danger" onClick={remove}>Delete</button>
+              <button className="btn btn-sm btn-ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
+            </div>
+          ) : (
+            <button className="btn btn-sm btn-danger" onClick={() => setConfirmDelete(true)}>
+              <IconTrash width={15} height={15} /> Delete
+            </button>
+          )}
         </div>
       </div>
 
@@ -293,14 +302,7 @@ export function RecordDetail() {
         </details>
       </div>
 
-      {confirmDelete && (
-        <div className="toast" style={{ display: "flex", gap: "var(--s3)", alignItems: "center" }}>
-          Delete this record?
-          <button className="btn btn-sm btn-danger" onClick={remove}>Delete</button>
-          <button className="btn btn-sm btn-ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
-        </div>
-      )}
-      {toast && !confirmDelete && <div className="toast">{toast}</div>}
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
 }

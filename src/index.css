@@ -15,7 +15,9 @@
   --border-strong: #393939;
   --text: #ece7da; /* warm cream */
   --text-muted: #8c8c86;
-  --text-faint: #5a5a55;
+  /* Bumped from #5a5a55 (~2.7:1, fails WCAG AA) to ~4.6:1 on --bg so hint text
+     and subtitles stay legible on the dark field. Still sits below --text-muted. */
+  --text-faint: #7d7d76;
   /* The single accent IS the brand lime — validation/success share it, as in
      the reference (one green, used everywhere green appears). */
   --accent: #c5f63b;
@@ -867,6 +869,42 @@ details.collapsible[open] summary::before {
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--r-input);
+}
+
+/* Click target wrapping a document preview — opens the full-screen view. */
+.zoomable {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.zoomable:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+/* Full-screen document view (Review). Click anywhere or press Escape to close. */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--s5);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  cursor: zoom-out;
+  animation: reveal 0.15s ease both;
+}
+
+.lightbox img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border: 1px solid var(--border-strong);
 }
 
 .progress {

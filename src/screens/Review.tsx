@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { newId, useStore } from "../store";
 import { recordFromDraft, type RecordEdits } from "../core/draft";
 import { useAuth } from "../auth";
 import { DEFAULT_ETO, ETO_OPTIONS, GPC_CURRENCIES } from "../lib/usbankOrder";
-import { Field, SourceTag } from "../components/ui";
+import { Field } from "../components/ui";
 import { confidenceBucket, toISODate } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
-import { IconTrash } from "../components/icons";
+import { IconEye, IconTrash } from "../components/icons";
 import {
   DESIGNATION_889_OPTIONS,
   DOC_TYPE_LABELS,
@@ -61,6 +61,15 @@ export function Review() {
   // SAM.gov 889 determination confirmed during review; attached to the record on save.
   const [section889, setSection889] = useState<Saved889 | null>(null);
 
+  // Full-screen view of the uploaded document, for checking fields against the source.
+  const [zoom, setZoom] = useState(false);
+  useEffect(() => {
+    if (!zoom) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZoom(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoom]);
+
   // "Auto-filled" reflects what the extractor actually read, not the defaults we
   // seed (currency/requestor), so count from the draft fields.
   const extractedCount = useMemo(() => {
@@ -100,11 +109,27 @@ export function Review() {
         </p>
       </div>
 
+      {/* The uploaded document, kept on hand so the reviewer can check fields
+          against the source. Click to open full screen. */}
+      {draft.imageUri && (
+        <div className="card">
+          <div className="row" style={{ marginBottom: "var(--s3)" }}>
+            <div className="card-title" style={{ margin: 0 }}>Uploaded document</div>
+            <div className="spacer" />
+            <button className="btn btn-sm btn-ghost" onClick={() => setZoom(true)}>
+              <IconEye width={15} height={15} /> Full screen
+            </button>
+          </div>
+          <button type="button" className="zoomable" onClick={() => setZoom(true)} aria-label="View document full screen">
+            <img src={draft.imageUri} className="preview-img" alt="Uploaded document" />
+          </button>
+        </div>
+      )}
+
       <div className="card">
         <div className="row" style={{ marginBottom: "var(--s4)" }}>
-          <SourceTag source={draft.source} />
           {draft.confidence != null && (
-            <span className="tag" title={`${Math.round(draft.confidence * 100)}% reported by the extractor`}>
+            <span className="tag" title={`${Math.round(draft.confidence * 100)}% confidence`}>
               {confidenceBucket(draft.confidence)} confidence
             </span>
           )}
@@ -232,10 +257,18 @@ export function Review() {
         </details>
       </div>
 
+      {/* Discard is destructive — push it well clear of Save so it can't be hit by mistake. */}
       <div className="row wrap">
         <button className="btn btn-primary btn-lg" onClick={save}>Save record</button>
+        <div className="spacer" />
         <Link to="/scan" className="btn btn-ghost btn-lg">Discard</Link>
       </div>
+
+      {zoom && draft.imageUri && (
+        <div className="lightbox" role="dialog" aria-modal="true" aria-label="Uploaded document" onClick={() => setZoom(false)}>
+          <img src={draft.imageUri} alt="Uploaded document" />
+        </div>
+      )}
     </div>
   );
 }
