@@ -70,6 +70,39 @@ export const DESIGNATION_889_OPTIONS = [
   "889 Rebate",
 ] as const;
 
+/**
+ * The required US Bank "Create Order" dropdowns (red-asterisk fields) the
+ * reviewer answers on top of the extracted receipt data. Grouped so they
+ * persist as one JSONB column rather than a dozen scalar columns. Option
+ * strings live in lib/usbankOrder. lineItemTax is the order-level "Line Item
+ * Tax" amount (distinct from the per-line totals and the order Total Tax).
+ */
+export type UsBankOrderFields = {
+  specialPreApproval: string;
+  delegatedProcurementAuthority: string;
+  prePurchaseApprovals: string;
+  section508Consideration: string;
+  requestToPurchaseReceived: string;
+  spendAnalysis: string;
+  requiredSourceScreened: string;
+  finalDeliveryOutsideUs: string;
+  lineItemTax: string;
+};
+
+export function emptyUsBankFields(): UsBankOrderFields {
+  return {
+    specialPreApproval: "",
+    delegatedProcurementAuthority: "",
+    prePurchaseApprovals: "",
+    section508Consideration: "",
+    requestToPurchaseReceived: "",
+    spendAnalysis: "",
+    requiredSourceScreened: "",
+    finalDeliveryOutsideUs: "",
+    lineItemTax: "0.00",
+  };
+}
+
 export type PurchaseRecord = {
   id: string;
   vendor: string;
@@ -86,6 +119,9 @@ export type PurchaseRecord = {
   requestorName: string; // cardholder / account name; defaults to the signed-in user
   emergencyTypeOperation: string; // ETO designation; defaults to "Not in support of ETO"
   designation889: string | null; // US Bank "889 Designation" classification, picked on review
+  // Required US Bank order dropdowns confirmed on review. Optional/nullable so
+  // records saved before these fields existed still read back cleanly.
+  usBank?: UsBankOrderFields | null;
   section889: Saved889 | null; // saved 889 determination, set on the record detail page
   rawOcrText: string;
   imageUri: string;

@@ -49,6 +49,17 @@ export type RecordEdits = {
   requestorName: string;
   emergencyTypeOperation: string;
   designation889: string;
+  // Required US Bank order dropdowns (see UsBankOrderFields) — flat in the form,
+  // grouped into record.usBank on save.
+  specialPreApproval: string;
+  delegatedProcurementAuthority: string;
+  prePurchaseApprovals: string;
+  section508Consideration: string;
+  requestToPurchaseReceived: string;
+  spendAnalysis: string;
+  requiredSourceScreened: string;
+  finalDeliveryOutsideUs: string;
+  lineItemTax: string;
   status: RecordStatus;
   docType: DocType;
   lineItems: LineItem[];
@@ -132,6 +143,17 @@ export function recordFromDraft(
     // Keep ETO non-empty: blank falls back to the standard default.
     emergencyTypeOperation: edits.emergencyTypeOperation.trim() || "Not in support of ETO",
     designation889: edits.designation889.trim() || null,
+    usBank: {
+      specialPreApproval: edits.specialPreApproval.trim(),
+      delegatedProcurementAuthority: edits.delegatedProcurementAuthority.trim(),
+      prePurchaseApprovals: edits.prePurchaseApprovals.trim(),
+      section508Consideration: edits.section508Consideration.trim(),
+      requestToPurchaseReceived: edits.requestToPurchaseReceived.trim(),
+      spendAnalysis: edits.spendAnalysis.trim(),
+      requiredSourceScreened: edits.requiredSourceScreened.trim(),
+      finalDeliveryOutsideUs: edits.finalDeliveryOutsideUs.trim(),
+      lineItemTax: edits.lineItemTax.trim() || "0.00",
+    },
     section889: null, // set later on the record detail page via the 889 lookup
     rawOcrText: draft.rawText,
     imageUri: draft.imageUri,

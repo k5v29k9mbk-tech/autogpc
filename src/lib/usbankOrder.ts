@@ -58,6 +58,122 @@ export const ETO_OPTIONS = [DEFAULT_ETO, "In Support of ETO"] as const;
  */
 export const GPC_CURRENCIES = ["USD", "EUR", "GBP", "JPY", "KRW"] as const;
 
+// ---------------------------------------------------------------------------
+// US Bank Access Online "Create Order" required dropdowns (red-asterisk fields).
+// Values are the exact option strings US Bank renders, so what the reviewer
+// picks here can be typed straight back into the order form. The last four
+// exception values repeat across most of these menus, so factor them out.
+// ---------------------------------------------------------------------------
+
+const TXN_EXCEPTIONS = [
+  "Refund or Credit",
+  "External Fraud",
+  "Disputed Transaction",
+  "US Bank Fee (e.g. Convenience Check)",
+] as const;
+
+export const SPECIAL_PRE_APPROVAL_OPTIONS = [
+  "No Items Require Special Approvals",
+  "Yes-Bottled Water",
+  "Yes-Hazardous Material",
+  "Yes-Unmanned Aerial Systems (UAS)",
+  "Yes-IT",
+  "Yes-Other-Identify in Comments Fields",
+  "Yes-Multiple-Identify All in Comments Fields",
+  "Non-Compliant: Required Pre-Approval not Obtained",
+  ...TXN_EXCEPTIONS,
+] as const;
+
+export const DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS = [
+  "Micro-Purchase CH",
+  "Micro-Purchase Convenience Check Writer",
+  "Micro-Purchase ETO CH and/or Check Writer",
+  "Higher Education Micro-Purchase CH",
+  "Warranted Overseas ETO CH",
+  "Contract Ordering Official CH",
+  "Contract Ordering Official CH in Support of ETO",
+  "Overseas Simplified Acquisition CH",
+  "Contract Payment Official CH",
+  "Misc Payments Official CH (SF-182 Training)",
+  "Intragovernmental Payment Official CH",
+  ...TXN_EXCEPTIONS,
+] as const;
+
+export const PREPURCHASE_APPROVALS_OPTIONS = [
+  "Yes-Both Obtained",
+  "Only A/BO Approval Obtained, see comments",
+  "Only RM/FM Approval Obtained, see comments",
+  "No Pre-Purch Approvals were Obtained, see comments",
+  "None Required",
+  ...TXN_EXCEPTIONS,
+] as const;
+
+export const SECTION_508_OPTIONS = [
+  "No Item(s) in Order are Subject to 508 Requirement",
+  "Contract Order/Payment",
+  "SF-182 Payment",
+  "Yes-Subject Item(s) are Compliant",
+  "Yes-Exception (Excp)-Legacy ICT (Safe Harbor)",
+  "Yes-Excp-National Security Systems",
+  "Yes-Excp-Federal Contract (ICT that is incidental)",
+  "Yes-Excp-In Maintenance/Monitoring Spaces",
+  "Yes-Excp-Undue Burden/Fundamental Alteration",
+  "Yes-Excp-Best meets",
+  "Yes-Excp-Revised 508 Standards Applicability CkLst",
+  "Non-Compliant: Subject Item(s) are not Compliant",
+  ...TXN_EXCEPTIONS,
+] as const;
+
+export const REQUEST_TO_PURCHASE_OPTIONS = [
+  "Written Request Provided",
+  "Self-Generated Purchase",
+  ...TXN_EXCEPTIONS,
+] as const;
+
+// ponytail: TRUNCATED — the US Bank "Spend Analysis" menu scrolls past
+// "Training & Development"; these are the options visible in the screenshot.
+// Paste the remaining categories here when you have the full list.
+export const SPEND_ANALYSIS_OPTIONS = [
+  "Awards, Outreach Materials, & Printing",
+  "Fleet Management & Vehicle Leases",
+  "Furniture, Fixtures, & Furnishings",
+  "Individual Issue Items, Tools, & PPE",
+  "Industrial, Lab, & Shop Supplies",
+  "IT Equipment (Hardware)",
+  "IT Infrastructure (Voice, Data, Wireless)",
+  "IT Maintenance & Sustainment",
+  "IT Services (Labor)",
+  "IT Software (licenses & Subscriptions)",
+  "Lodging & Short Term Facility Leases",
+  "Minor Construction & Facilities Services",
+  "Morale, Welfare & Recreation (MWR)",
+  "Office Supplies",
+  "Postage & Freight",
+  "Safety & Protective Equipment",
+  "Subscriptions & Publications",
+  "Tools, Maintenance, & Repair Supplies",
+  "Training & Development",
+] as const;
+
+export const REQUIRED_SOURCE_SCREENED_OPTIONS = [
+  "Purchased from Required Source",
+  "Exception or Waiver Applies",
+  "No FAR 8 Required or Other Required Sources Apply",
+  "Contract Payment",
+  "SF-182 Payment",
+  "Non-Compliant: Not Purchased from Required Source",
+  ...TXN_EXCEPTIONS,
+] as const;
+
+export const FINAL_DELIVERY_OUTSIDE_US_OPTIONS = [
+  "No",
+  "Yes-But No Merchant Shipping Required",
+  "Yes-Ship Commercial Carrier (eg DHL)-DTS NOT req",
+  "Yes-Via Postal Service to APO/FPO",
+  "Yes-MSLabel Provided to Vendor for DTS Shipment",
+  ...TXN_EXCEPTIONS,
+] as const;
+
 function toNumber(s: string | null | undefined): number | null {
   if (s == null) return null;
   const cleaned = String(s).replace(/[^0-9.\-]/g, "");

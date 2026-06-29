@@ -15,6 +15,7 @@ import type {
   PurchaseRecord,
   RecordStatus,
   Saved889,
+  UsBankOrderFields,
 } from "../core/types";
 
 const TABLE = "records";
@@ -39,6 +40,7 @@ type Row = {
   requestor_name: string;
   emergency_type_operation: string;
   designation_889: string | null;
+  us_bank_fields: UsBankOrderFields | null;
   section_889: Saved889 | null;
   raw_ocr_text: string;
   image_uri: string;
@@ -68,6 +70,7 @@ function toRow(r: PurchaseRecord): Row {
     requestor_name: r.requestorName,
     emergency_type_operation: r.emergencyTypeOperation,
     designation_889: r.designation889,
+    us_bank_fields: r.usBank ?? null,
     section_889: r.section889,
     raw_ocr_text: r.rawOcrText,
     image_uri: r.imageUri,
@@ -97,6 +100,7 @@ function fromRow(row: Row): PurchaseRecord {
     requestorName: row.requestor_name ?? "",
     emergencyTypeOperation: row.emergency_type_operation ?? "Not in support of ETO",
     designation889: row.designation_889 ?? null,
+    usBank: row.us_bank_fields ?? null,
     section889: row.section_889 ?? null,
     rawOcrText: row.raw_ocr_text,
     imageUri: row.image_uri,

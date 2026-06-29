@@ -247,6 +247,25 @@ export function RecordDetail() {
         {!editing && <p className="muted" style={{ fontSize: 12, marginTop: "var(--s3)" }}>Edit the record to update the checklist.</p>}
       </div>
 
+      {/* US Bank required order fields, confirmed on review. Read-only here;
+          edit them by re-reviewing. */}
+      {record.usBank && (
+        <div className="card">
+          <div className="card-title">US Bank order fields</div>
+          <dl className="kv">
+            <dt>Special Pre-Approval</dt><dd>{orDash(record.usBank.specialPreApproval)}</dd>
+            <dt>Delegated Procurement Authority</dt><dd>{orDash(record.usBank.delegatedProcurementAuthority)}</dd>
+            <dt>A/BO-RM/FM Pre-Purch Approvals</dt><dd>{orDash(record.usBank.prePurchaseApprovals)}</dd>
+            <dt>Section 508 Consideration</dt><dd>{orDash(record.usBank.section508Consideration)}</dd>
+            <dt>Request to Purchase Received</dt><dd>{orDash(record.usBank.requestToPurchaseReceived)}</dd>
+            <dt>Spend Analysis</dt><dd>{orDash(record.usBank.spendAnalysis)}</dd>
+            <dt>Required Source Screened</dt><dd>{orDash(record.usBank.requiredSourceScreened)}</dd>
+            <dt>Final Delivery Outside US</dt><dd>{orDash(record.usBank.finalDeliveryOutsideUs)}</dd>
+            <dt>Line Item Tax</dt><dd>{orDash(record.usBank.lineItemTax)}</dd>
+          </dl>
+        </div>
+      )}
+
       {/* Status actions */}
       <div className="card">
         <div className="card-title">Workflow</div>

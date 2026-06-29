@@ -3,7 +3,19 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { newId, useStore } from "../store";
 import { recordFromDraft, type RecordEdits } from "../core/draft";
 import { useAuth } from "../auth";
-import { DEFAULT_ETO, ETO_OPTIONS, GPC_CURRENCIES } from "../lib/usbankOrder";
+import {
+  DEFAULT_ETO,
+  DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS,
+  ETO_OPTIONS,
+  FINAL_DELIVERY_OUTSIDE_US_OPTIONS,
+  GPC_CURRENCIES,
+  PREPURCHASE_APPROVALS_OPTIONS,
+  REQUEST_TO_PURCHASE_OPTIONS,
+  REQUIRED_SOURCE_SCREENED_OPTIONS,
+  SECTION_508_OPTIONS,
+  SPECIAL_PRE_APPROVAL_OPTIONS,
+  SPEND_ANALYSIS_OPTIONS,
+} from "../lib/usbankOrder";
 import { Field } from "../components/ui";
 import { confidenceBucket, toISODate } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
@@ -44,7 +56,9 @@ export function Review() {
       // Auto-grab the currency: use what the extractor read, else default to USD
       // (the GPC default) rather than leaving the reviewer on "— select —".
       currency: f.currency || "USD",
-      taxAmount: f.taxAmount ?? "",
+      // Tax fields are required by US Bank but default to 0.00 there, so seed
+      // them rather than forcing the reviewer to type a zero.
+      taxAmount: f.taxAmount || "0.00",
       cardLast4: f.cardLast4 ?? "",
       receiptNumber: f.receiptNumber ?? "",
       invoiceNumber: f.invoiceNumber ?? "",
@@ -52,11 +66,25 @@ export function Review() {
       requestorName: cardholderName,
       emergencyTypeOperation: DEFAULT_ETO,
       designation889: "",
+      // Required US Bank dropdowns — left blank so the reviewer must consciously
+      // pick each one (they can't be inferred from a receipt).
+      specialPreApproval: "",
+      delegatedProcurementAuthority: "",
+      prePurchaseApprovals: "",
+      section508Consideration: "",
+      requestToPurchaseReceived: "",
+      spendAnalysis: "",
+      requiredSourceScreened: "",
+      finalDeliveryOutsideUs: "",
+      lineItemTax: "0.00",
       status: "needs_review",
       docType: draft?.docType ?? "receipt",
       lineItems: draft?.lineItems ?? [],
     };
   });
+
+  // Required-field validation surfaced on a failed save attempt.
+  const [missing, setMissing] = useState<string[]>([]);
 
   // SAM.gov 889 determination confirmed during review; attached to the record on save.
   const [section889, setSection889] = useState<Saved889 | null>(null);
@@ -90,7 +118,59 @@ export function Review() {
       lineItems: prev.lineItems.map((li, idx) => (idx === i ? { ...li, ...patch } : li)),
     }));
 
+  // The new US Bank required dropdowns all render the same way: a labelled
+  // select seeded blank, valid once picked.
+  type UsBankSelectKey =
+    | "specialPreApproval"
+    | "delegatedProcurementAuthority"
+    | "prePurchaseApprovals"
+    | "section508Consideration"
+    | "requestToPurchaseReceived"
+    | "spendAnalysis"
+    | "requiredSourceScreened"
+    | "finalDeliveryOutsideUs";
+  const selectField = (key: UsBankSelectKey, label: string, options: readonly string[]) => (
+    <Field label={`${label} *`} valid={!!form[key].trim()}>
+      <select className="select" value={form[key]} onChange={(e) => set(key, e.target.value)}>
+        <option value="">— select —</option>
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </Field>
+  );
+
+  // US Bank requires every red-asterisk field before an order can be created.
+  // Enforce the same here so a saved record is order-ready, not half-filled.
+  const requiredFields: [keyof Form, string][] = [
+    ["requestorName", "Requestor name"],
+    ["totalAmount", "Amount"],
+    ["transactionDate", "Order date"],
+    ["specialPreApproval", "Special Pre-Approval Obtained"],
+    ["delegatedProcurementAuthority", "Delegated Procurement Authority Used"],
+    ["prePurchaseApprovals", "A/BO and/or RM/FM Pre-Purch Approvals Obtained"],
+    ["section508Consideration", "Items Subject to Section 508 Consideration"],
+    ["requestToPurchaseReceived", "Request to Purchase Received"],
+    ["spendAnalysis", "Spend Analysis"],
+    ["vendor", "Merchant name"],
+    ["requiredSourceScreened", "Required Source Screened"],
+    ["designation889", "889 Designation"],
+    ["finalDeliveryOutsideUs", "Final Delivery Location Outside United States"],
+  ];
+
   const save = async () => {
+    const gaps = requiredFields
+      .filter(([key]) => !String(form[key]).trim())
+      .map(([, label]) => label);
+    // Line items are optional, but any present one needs a description and total.
+    if (form.lineItems.some((li) => !li.description.trim() || !String(li.total ?? "").trim()))
+      gaps.push("Line item description and total");
+    if (gaps.length) {
+      setMissing(gaps);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setMissing([]);
     const id = newId();
     const record = { ...recordFromDraft(draft, form, { id, finishedAt: Date.now() }), section889 };
     await addRecord(record, draft.imageBlob);
@@ -108,6 +188,14 @@ export function Review() {
           guess — that is what keeps the record audit-ready.
         </p>
       </div>
+
+      {missing.length > 0 && (
+        <div className="alert alert-error">
+          <div>
+            Fill the required US Bank fields before saving: {missing.join(", ")}.
+          </div>
+        </div>
+      )}
 
       {/* The uploaded document, kept on hand so the reviewer can check fields
           against the source. Click to open full screen. */}
@@ -137,9 +225,11 @@ export function Review() {
           <span className="muted" style={{ fontSize: 12 }}>{extractedCount} fields auto-filled</span>
         </div>
 
-        {/* One US Bank order, in the order the fields appear on the US Bank form:
-            requestor, ETO, amount, merchant, 889 designation, then the rest. */}
+        {/* Fields follow the US Bank "Create Order" form, section by section.
+            Every red-asterisk field there is required (*) and blocked on save. */}
         <div className="grid cols-2">
+          {/* General / approvals */}
+          <div className="stat-label" style={{ gridColumn: "1 / -1" }}>General &amp; approvals</div>
           <Field label="Requestor name *" valid={!!form.requestorName.trim()}>
             <input
               className="input"
@@ -148,6 +238,15 @@ export function Review() {
               placeholder="Cardholder first and last name"
             />
           </Field>
+          <Field label="Order date *" valid={!!form.transactionDate.trim()}>
+            <input type="date" className="input" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} />
+          </Field>
+          {selectField("specialPreApproval", "Special Pre-Approval Obtained", SPECIAL_PRE_APPROVAL_OPTIONS)}
+          {selectField("delegatedProcurementAuthority", "Delegated Procurement Authority Used", DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS)}
+          {selectField("prePurchaseApprovals", "A/BO and/or RM/FM Pre-Purch Approvals Obtained", PREPURCHASE_APPROVALS_OPTIONS)}
+          {selectField("section508Consideration", "Items Subject to Section 508 Consideration?", SECTION_508_OPTIONS)}
+          {selectField("requestToPurchaseReceived", "Request to Purchase Received", REQUEST_TO_PURCHASE_OPTIONS)}
+          {selectField("spendAnalysis", "Spend Analysis", SPEND_ANALYSIS_OPTIONS)}
           <Field label="Emergency-Type Operation (OM) *">
             <select
               className="select"
@@ -159,6 +258,9 @@ export function Review() {
               ))}
             </select>
           </Field>
+
+          {/* Financials */}
+          <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Financials</div>
           <Field label="Amount *" valid={!!form.totalAmount.trim()}>
             <div className="row" style={{ gap: "var(--s2)" }}>
               <input className="input mono" style={{ flex: 1 }} value={form.totalAmount} onChange={(e) => set("totalAmount", e.target.value)} />
@@ -169,10 +271,20 @@ export function Review() {
               </select>
             </div>
           </Field>
+          <Field label="Total Tax *" valid={!!form.taxAmount.trim()}>
+            <input className="input mono" value={form.taxAmount} onChange={(e) => set("taxAmount", e.target.value)} />
+          </Field>
+          <Field label="Line Item Tax *" valid={!!form.lineItemTax.trim()}>
+            <input className="input mono" value={form.lineItemTax} onChange={(e) => set("lineItemTax", e.target.value)} />
+          </Field>
+
+          {/* Merchant */}
+          <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Merchant</div>
           <Field label="Merchant name *" valid={!!form.vendor.trim()}>
             <input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} />
           </Field>
-          <Field label="889 Designation *" valid={!!form.designation889.trim()}>
+          {selectField("requiredSourceScreened", "Required Source Screened", REQUIRED_SOURCE_SCREENED_OPTIONS)}
+          <Field label="889 Designation (OM) *" valid={!!form.designation889.trim()}>
             <select className="select" value={form.designation889} onChange={(e) => set("designation889", e.target.value)}>
               <option value="">— select —</option>
               {DESIGNATION_889_OPTIONS.map((d) => (
@@ -180,9 +292,13 @@ export function Review() {
               ))}
             </select>
           </Field>
-          <Field label="Transaction date" valid={!!form.transactionDate.trim()}>
-            <input type="date" className="input" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} />
-          </Field>
+
+          {/* Ship to */}
+          <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Shipping</div>
+          {selectField("finalDeliveryOutsideUs", "Final Delivery Location Outside United States?", FINAL_DELIVERY_OUTSIDE_US_OPTIONS)}
+
+          {/* Filing */}
+          <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Filing</div>
           <Field label="Document type">
             <select className="select" value={form.docType} onChange={(e) => set("docType", e.target.value as DocType)}>
               {DOC_TYPES.map((d) => (
@@ -230,9 +346,10 @@ export function Review() {
           <div className="stack" style={{ gap: "var(--s2)" }}>
             {/* Column headers, matching the US Bank line-item grid */}
             <div className="row" style={{ gap: "var(--s2)", fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>
-              <span style={{ flex: 3 }}>Item Description</span>
+              <span style={{ flex: 3 }}>Item Description *</span>
               <span style={{ flex: 1 }}>Qty</span>
               <span style={{ flex: 1 }}>Unit Cost</span>
+              <span style={{ flex: 1 }}>Line Item Total *</span>
               <span style={{ width: 40, flex: "0 0 auto" }} aria-hidden />
             </div>
             {form.lineItems.map((li, i) => (
@@ -240,6 +357,7 @@ export function Review() {
                 <input className="input" style={{ flex: 3 }} aria-label="Item description" value={li.description} onChange={(e) => setLineItem(i, { description: e.target.value })} />
                 <input className="input mono" style={{ flex: 1 }} aria-label="Quantity" value={li.quantity ?? ""} onChange={(e) => setLineItem(i, { quantity: e.target.value || null })} />
                 <input className="input mono" style={{ flex: 1 }} aria-label="Unit cost" value={li.unitPrice ?? ""} onChange={(e) => setLineItem(i, { unitPrice: e.target.value || null })} />
+                <input className="input mono" style={{ flex: 1 }} aria-label="Line item total" value={li.total ?? ""} onChange={(e) => setLineItem(i, { total: e.target.value || null })} />
                 <button className="btn btn-ghost" style={{ width: 40, height: 40, padding: 0, flex: "0 0 auto" }} aria-label="Remove line item" onClick={() => set("lineItems", form.lineItems.filter((_, idx) => idx !== i))}>
                   <IconTrash width={15} height={15} />
                 </button>
