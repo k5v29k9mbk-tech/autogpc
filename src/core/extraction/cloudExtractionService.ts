@@ -33,6 +33,8 @@ type CloudResponse = {
   rawTextSource?: "document" | "summary";
   lineItems: LineItem[];
   confidence?: number;
+  /** Per-field confidence 0..1 from the post-processor. */
+  fieldConfidence?: Record<string, number>;
 };
 
 async function blobToBase64(blob: Blob): Promise<string> {
@@ -139,6 +141,13 @@ export const cloudExtractionService: ExtractionService = {
     const fields = { ...base.fields, ...nonEmpty(cloud.fields) };
     const lineItems = cloud.lineItems?.length ? cloud.lineItems : base.lineItems;
 
-    return { fields, rawText: cloud.rawText, lineItems, source: "cloud", confidence: cloud.confidence };
+    return {
+      fields,
+      rawText: cloud.rawText,
+      lineItems,
+      source: "cloud",
+      confidence: cloud.confidence,
+      fieldConfidence: cloud.fieldConfidence,
+    };
   },
 };

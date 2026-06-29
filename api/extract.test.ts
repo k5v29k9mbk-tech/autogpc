@@ -36,23 +36,36 @@ describe("mapAnalyzeExpense — vendor plausibility", () => {
     expect(r.fields.vendor).toBeUndefined();
   });
 
-  it("rejects a vendor not corroborated by the high-confidence OCR text", () => {
+  it("drops an uncorroborated VENDOR_NAME and recovers the real name from the top OCR line", () => {
     const blocks = [
       { BlockType: "LINE", Text: "EXCHANGE", Confidence: 99 },
       { BlockType: "LINE", Text: "Ramstein KMCC Mall", Confidence: 98 },
       { BlockType: "LINE", Text: "TOTAL 40.45", Confidence: 99 },
     ];
-    // "Gorl2x" passes shape checks but appears nowhere in the real OCR lines.
+    // "Gorl2x" passes shape checks but appears nowhere in the real OCR lines, so
+    // it's dropped — and the corroborated top printed line is recovered instead.
     const bad = mapAnalyzeExpense(
       fakeOutput({ SummaryFields: [summaryField("VENDOR_NAME", "Gorl2x")], Blocks: blocks }),
     );
-    expect(bad.fields.vendor).toBeUndefined();
+    expect(bad.fields.vendor).toBe("EXCHANGE");
 
-    // Corroboration is fuzzy: case and punctuation differences still match.
+    // Textract's own VENDOR_NAME wins when it IS corroborated (keeps its casing).
     const ok = mapAnalyzeExpense(
       fakeOutput({ SummaryFields: [summaryField("VENDOR_NAME", "Exchange")], Blocks: blocks }),
     );
     expect(ok.fields.vendor).toBe("Exchange");
+  });
+
+  it("stays blank when nothing plausible can be recovered", () => {
+    const blocks = [
+      { BlockType: "LINE", Text: "TOTAL 40.45", Confidence: 99 },
+      { BlockType: "LINE", Text: "VISA ****1234", Confidence: 98 },
+      { BlockType: "LINE", Text: "06/12/2024", Confidence: 97 },
+    ];
+    const r = mapAnalyzeExpense(
+      fakeOutput({ SummaryFields: [summaryField("VENDOR_NAME", "gorl2")], Blocks: blocks }),
+    );
+    expect(r.fields.vendor).toBeUndefined();
   });
 
   it("does not let generic NAME overwrite VENDOR_NAME", () => {

@@ -1,0 +1,30 @@
+{
+  "ExpenseDocuments": [
+    {
+      "Blocks": [
+        { "BlockType": "LINE", "Text": "give back ot ytinummoc", "Confidence": 55.2 },
+        { "BlockType": "LINE", "Text": "EXCHANGE", "Confidence": 99.1 },
+        { "BlockType": "LINE", "Text": "Ramstein KMCC Mall", "Confidence": 98.4 },
+        { "BlockType": "LINE", "Text": "TOTAL 40.45", "Confidence": 99.0 }
+      ],
+      "SummaryFields": [
+        { "Type": { "Text": "VENDOR_NAME" }, "ValueDetection": { "Text": "gorl2", "Confidence": 80.3 } },
+        { "Type": { "Text": "TOTAL" }, "ValueDetection": { "Text": "$40.45", "Confidence": 99.0 } },
+        { "Type": { "Text": "TAX" }, "ValueDetection": { "Text": "$2.45", "Confidence": 96.0 } },
+        { "Type": { "Text": "INVOICE_RECEIPT_DATE" }, "ValueDetection": { "Text": "06/12/2024", "Confidence": 97.0 } }
+      ],
+      "LineItemGroups": [
+        {
+          "LineItems": [
+            {
+              "LineItemExpenseFields": [
+                { "Type": { "Text": "ITEM" }, "ValueDetection": { "Text": "TAC SLING PK" } },
+                { "Type": { "Text": "PRICE" }, "ValueDetection": { "Text": "22.46" } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

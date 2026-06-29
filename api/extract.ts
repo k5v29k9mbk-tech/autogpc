@@ -16,6 +16,7 @@ import {
   type AnalyzeExpenseCommandOutput,
   type ExpenseDocument,
 } from "@aws-sdk/client-textract";
+import { selectVendor } from "./textractPostProcessor";
 
 // Vercel runs functions on AWS Lambda, which RESERVES the env names AWS_REGION,
 // AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY for its own runtime — setting
@@ -45,24 +46,6 @@ function clean(s?: string): string {
 /** Strip currency symbols/spaces but keep digits, separators, and sign. */
 function amount(s?: string): string {
   return clean(s).replace(/[^0-9.,-]/g, "");
-}
-
-// Thermal-receipt scans often carry mirrored bleed-through from the back of
-// the paper; Textract can label a piece of it VENDOR_NAME (e.g. "muteR" —
-// mirrored "Return"). Reject obvious noise: a blank field the reviewer fills
-// beats a confidently wrong one. Single all-lowercase tokens and tokens with a
-// lowercase→uppercase flip at the end are bleed-through signatures, not names.
-function plausibleVendor(v: string): boolean {
-  if ((v.match(/[A-Za-zÀ-ÿ]/g) || []).length < 2) return false;
-  if (/\s/.test(v)) return true; // multi-word names pass
-  if (!/[A-ZÀ-Þ]/.test(v)) return false; // no capital at all ("gorl2", "pnivotomi")
-  if (/^[a-zà-ÿ]+[A-ZÀ-Þ]{1,2}$/.test(v)) return false;
-  return true;
-}
-
-/** Lowercase and strip everything but letters/digits, for fuzzy containment. */
-function normalizeForMatch(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9à-ÿ]/g, "");
 }
 
 // Prefer the document's real OCR lines (ExpenseDocument.Blocks) so rawText
@@ -102,33 +85,42 @@ function buildRawText(doc?: ExpenseDocument): { text: string; source: "document"
 export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
   const doc = out.ExpenseDocuments?.[0];
   const fields: Record<string, string | null> = {};
-  const confidences: number[] = [];
+  // Per-field confidence (0..1): money/date carry Textract's own confidence;
+  // vendor carries the post-processor's score. The review UI can flag the shaky
+  // fields instead of treating every auto-fill as equally trustworthy.
+  const fieldConfidence: Record<string, number> = {};
+  // Vendor is selected separately (see selectVendor) from these candidates plus
+  // the top OCR lines — Textract's VENDOR_NAME label alone is the field it most
+  // often gets wrong on thermal scans.
+  const vendorCandidates: Array<{ text: string; label: "VENDOR_NAME" | "NAME"; confidence: number }> = [];
   let currency = "";
 
   for (const f of doc?.SummaryFields ?? []) {
     const type = f.Type?.Text;
     const value = f.ValueDetection?.Text;
-    const conf = f.ValueDetection?.Confidence;
+    const conf = f.ValueDetection?.Confidence ?? 0;
     if (f.Currency?.Code && !currency) currency = f.Currency.Code;
 
     switch (type) {
       case "VENDOR_NAME":
-        // Authoritative — but never clobber a previous hit with an empty or
-        // implausible (bleed-through) value.
-        if (plausibleVendor(clean(value))) fields.vendor = clean(value);
+        vendorCandidates.push({ text: clean(value), label: "VENDOR_NAME", confidence: conf });
         break;
       case "NAME":
-        // Generic NAME can be the customer/recipient; only fill a gap with it.
-        if (!fields.vendor && plausibleVendor(clean(value))) fields.vendor = clean(value);
+        vendorCandidates.push({ text: clean(value), label: "NAME", confidence: conf });
         break;
       case "TOTAL":
         fields.totalAmount = amount(value);
+        fieldConfidence.totalAmount = conf / 100;
         break;
-      case "TAX":
-        fields.taxAmount = amount(value) || null;
+      case "TAX": {
+        const tax = amount(value) || null;
+        fields.taxAmount = tax;
+        if (tax) fieldConfidence.taxAmount = conf / 100;
         break;
+      }
       case "INVOICE_RECEIPT_DATE":
         fields.transactionDate = clean(value);
+        fieldConfidence.transactionDate = conf / 100;
         break;
       case "INVOICE_RECEIPT_ID":
       case "RECEIPT_ID":
@@ -136,9 +128,6 @@ export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
         break;
       default:
         break;
-    }
-    if (type && ["VENDOR_NAME", "NAME", "TOTAL", "TAX", "INVOICE_RECEIPT_DATE"].includes(type) && typeof conf === "number") {
-      confidences.push(conf);
     }
   }
   if (currency) fields.currency = currency;
@@ -169,26 +158,23 @@ export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
     }
   }
 
-  const confidence =
-    confidences.length > 0
-      ? confidences.reduce((a, b) => a + b, 0) / confidences.length / 100
-      : undefined;
-
   const raw = buildRawText(doc);
 
-  // Corroboration gate: a real vendor name is printed on the receipt, so it
-  // must appear among the high-confidence OCR lines. When Textract mislabels
-  // mirrored bleed-through as VENDOR_NAME (e.g. "gorl2"), that text comes from
-  // exactly the lines the confidence floor dropped — so it won't be found here.
-  // Shape-based plausibleVendor() can't enumerate every gibberish form; this
-  // check rejects it on provenance instead.
-  if (fields.vendor && raw.source === "document") {
-    if (!normalizeForMatch(raw.text).includes(normalizeForMatch(fields.vendor))) {
-      delete fields.vendor;
-    }
+  // Vendor selection: blacklist + shape + OCR corroboration + positional
+  // scoring over Textract's candidates and the top OCR lines (see selectVendor).
+  const { vendor, confidence: vendorConf } = selectVendor(vendorCandidates, doc, raw.source);
+  if (vendor) {
+    fields.vendor = vendor;
+    fieldConfidence.vendor = vendorConf;
   }
 
-  return { fields, rawText: raw.text, rawTextSource: raw.source, lineItems, confidence };
+  const confs = Object.values(fieldConfidence);
+  const confidence =
+    confs.length > 0
+      ? Number((confs.reduce((a, b) => a + b, 0) / confs.length).toFixed(2))
+      : undefined;
+
+  return { fields, rawText: raw.text, rawTextSource: raw.source, lineItems, confidence, fieldConfidence };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -206,7 +192,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // (avoids the @types/node Buffer vs Uint8Array<ArrayBuffer> mismatch).
     const bytes = new Uint8Array(Buffer.from(fileBase64, "base64"));
     const out = await client.send(new AnalyzeExpenseCommand({ Document: { Bytes: bytes } }));
-    res.status(200).json(mapAnalyzeExpense(out));
+    const result = mapAnalyzeExpense(out);
+    // ponytail: dev-only raw-Textract capture for seeding golden fixtures
+    // (api/fixtures/). PII — gate on an explicit env var, never on in prod.
+    if (process.env.EXTRACT_DEBUG === "1") {
+      (result as Record<string, unknown>)._rawTextract = out;
+    }
+    res.status(200).json(result);
   } catch (err) {
     // Surface the AWS error NAME + message (safe — no document or credentials)
     // so the browser console shows the real cause, e.g. AccessDeniedException.

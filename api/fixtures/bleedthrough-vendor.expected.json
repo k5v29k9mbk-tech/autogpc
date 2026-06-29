@@ -1,0 +1,20 @@
+{
+  "fields": {
+    "totalAmount": "40.45",
+    "taxAmount": "2.45",
+    "transactionDate": "06/12/2024",
+    "vendor": "EXCHANGE"
+  },
+  "rawText": "EXCHANGE\nRamstein KMCC Mall\nTOTAL 40.45",
+  "rawTextSource": "document",
+  "lineItems": [
+    { "description": "TAC SLING PK", "quantity": null, "unitPrice": null, "total": "22.46" }
+  ],
+  "confidence": 0.93,
+  "fieldConfidence": {
+    "totalAmount": 0.99,
+    "taxAmount": 0.96,
+    "transactionDate": 0.97,
+    "vendor": 0.79
+  }
+}

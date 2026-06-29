@@ -38,6 +38,9 @@ export type ExtractionResult = {
   lineItems: LineItem[];
   source: ExtractionSource;
   confidence?: number;
+  /** Per-field confidence 0..1, where the engine exposes it (cloud does). Lets
+   *  the review UI flag low-trust auto-fills instead of treating all as equal. */
+  fieldConfidence?: Record<string, number>;
 };
 
 export interface ExtractionService {
