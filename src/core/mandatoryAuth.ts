@@ -277,9 +277,10 @@ export const EQUIPMENT_OVER_5000: AuthCategory = {
   specialPreApproval: "Yes-Other-Identify in Comments Fields",
 };
 
-const BY_ID = new Map<string, AuthCategory>(
-  [...AUTH_CATALOG, EQUIPMENT_OVER_5000].map((c) => [c.id, c]),
-);
+/** Every category a reviewer can pick from (keyword catalog + the value rule). */
+export const ALL_AUTH_CATEGORIES: AuthCategory[] = [...AUTH_CATALOG, EQUIPMENT_OVER_5000];
+
+const BY_ID = new Map<string, AuthCategory>(ALL_AUTH_CATEGORIES.map((c) => [c.id, c]));
 
 export function authCategory(id: string): AuthCategory | undefined {
   return BY_ID.get(id);

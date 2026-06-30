@@ -35,6 +35,13 @@ interface StoreValue {
   updateRecord: (record: PurchaseRecord) => Promise<void>;
   deleteRecord: (id: string) => Promise<void>;
   resolveImage: (uri: string) => Promise<string | null>;
+  /** Persist a supporting-document file; returns the stored blob metadata. */
+  putAttachment: (
+    recordId: string,
+    file: File,
+  ) => Promise<{ id: string; uri: string; filename: string; contentType: string }>;
+  /** Drop a previously stored attachment blob (best-effort). */
+  deleteAttachment: (uri: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -111,6 +118,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const resolveImage = useCallback((uri: string) => storeRef.current.resolveImageSrc(uri), []);
 
+  const putAttachment = useCallback(async (recordId: string, file: File) => {
+    const id = newId();
+    const uri = await storeRef.current.putImage(`${recordId}/${id}`, file);
+    return { id, uri, filename: file.name, contentType: file.type || "application/octet-stream" };
+  }, []);
+
+  const deleteAttachment = useCallback((uri: string) => storeRef.current.deleteImage(uri), []);
+
   const value = useMemo<StoreValue>(
     () => ({
       ready,
@@ -122,8 +137,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateRecord,
       deleteRecord,
       resolveImage,
+      putAttachment,
+      deleteAttachment,
     }),
-    [ready, records, draft, getRecord, addRecord, updateRecord, deleteRecord, resolveImage],
+    [ready, records, draft, getRecord, addRecord, updateRecord, deleteRecord, resolveImage, putAttachment, deleteAttachment],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

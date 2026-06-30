@@ -35,6 +35,7 @@ const ResetPassword = lazy(() =>
 const SsoAuthorize = lazy(() =>
   import("./screens/auth/SsoAuthorize").then((m) => ({ default: m.SsoAuthorize })),
 );
+const Terms = lazy(() => import("./screens/Terms").then((m) => ({ default: m.Terms })));
 
 export default function App() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="auth/callback" element={<AuthCallback />} />
         <Route path="auth/reset" element={<ResetPassword />} />
+        <Route path="terms" element={<Terms />} />
 
         {/* SSO handoff for partner apps ("Sign in with Nexus"). */}
         <Route path="sso/authorize" element={<SsoAuthorize />} />

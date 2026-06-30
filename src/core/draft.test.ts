@@ -30,7 +30,7 @@ const EDITS: RecordEdits = {
   receiptNumber: "",
   invoiceNumber: " ",
   notes: "ok",
-  requestorName: " Marcus Holloway ",
+  requestorName: " Jordan Reyes ",
   emergencyTypeOperation: "Not in support of ETO",
   designation889: "889 Government",
   specialPreApproval: "No Items Require Special Approvals",
@@ -136,7 +136,7 @@ describe("recordFromDraft", () => {
 
   it("carries the US Bank order fields, trimming the requestor and defaulting blank ETO", () => {
     const rec = recordFromDraft(draft, { ...EDITS, emergencyTypeOperation: "  " }, { id: "r1", finishedAt: 20_000 });
-    expect(rec.requestorName).toBe("Marcus Holloway");
+    expect(rec.requestorName).toBe("Jordan Reyes");
     expect(rec.emergencyTypeOperation).toBe("Not in support of ETO");
 
     const inSupport = recordFromDraft(draft, { ...EDITS, emergencyTypeOperation: "In Support of ETO" }, { id: "r1", finishedAt: 20_000 });

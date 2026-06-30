@@ -15,10 +15,11 @@ import {
 } from "../lib/usbankOrder";
 import { submitUsBankOrder, type CreatedOrder } from "../lib/usbankClient";
 import { buildUsBankDocuments } from "../lib/usbankDocuments";
+import { requiredDocuments } from "../core/mandatoryAuth";
 import { formatAmount } from "../lib/format";
 import { useAuth } from "../auth";
 import { useStore } from "../store";
-import type { PurchaseRecord } from "../core/types";
+import { emptyMandatoryAuth, type PurchaseRecord } from "../core/types";
 import { Section889Field } from "./Section889Field";
 import { IconAlert, IconCheck } from "./icons";
 
@@ -59,6 +60,18 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   // Requestor now has a default, so only warn when it's genuinely empty.
   const warnings = draft.warnings;
   const blocked = !draft.payload.merchantName || draft.payload.amount <= 0 || !requestor.trim();
+
+  // Supporting documents the record should carry (GPC purchase request, VAT,
+  // memo, approvals) that aren't attached yet. A reminder only — never blocks
+  // the order, since the cardholder may attach them in US Bank themselves.
+  const ma = record.mandatoryAuth ?? emptyMandatoryAuth();
+  const attachedSlots = new Set((record.attachments ?? []).map((a) => a.slotId));
+  const missingDocs = requiredDocuments(ma.categories, {
+    germanVendor: ma.germanVendor,
+    delivered: ma.delivered,
+  })
+    .filter((d) => !attachedSlots.has(d.id) && !(d.id === "receipt" && record.imageUri))
+    .map((d) => d.label);
 
   const submit = async () => {
     setSubmitting(true);
@@ -244,6 +257,19 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
                   </li>
                 ))}
               </ul>
+            </div>
+          </div>
+        )}
+
+        {missingDocs.length > 0 && (
+          <div className="alert">
+            <IconAlert width={16} height={16} />
+            <div>
+              <strong>Not attached yet (optional):</strong> {missingDocs.join(", ")}.
+              <div style={{ fontSize: 13, marginTop: 4 }}>
+                Upload them in the documents section above so they ride along to US Bank — or add
+                them in US Bank yourself later. You can still create the order without them.
+              </div>
             </div>
           </div>
         )}

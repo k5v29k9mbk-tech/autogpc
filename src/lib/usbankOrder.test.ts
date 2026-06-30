@@ -18,7 +18,7 @@ function record(over: Partial<PurchaseRecord> = {}): PurchaseRecord {
       { description: "EXTCORD ORNG 25FT", quantity: "3", unitPrice: "7.99", total: "23.97" },
     ],
     notes: "",
-    requestorName: "Marcus Holloway",
+    requestorName: "Jordan Reyes",
     emergencyTypeOperation: "Not in support of ETO",
     designation889: null,
     section889: null,
@@ -52,9 +52,9 @@ describe("toIsoDate", () => {
 
 describe("toUsBankOrder", () => {
   it("maps the required + stored fields for a clean USD receipt", () => {
-    const { payload, warnings } = toUsBankOrder(record(), { requestorName: "Marcus Holloway" });
+    const { payload, warnings } = toUsBankOrder(record(), { requestorName: "Jordan Reyes" });
     expect(payload.merchantName).toBe("EXCHANGE");
-    expect(payload.requestorName).toBe("Marcus Holloway");
+    expect(payload.requestorName).toBe("Jordan Reyes");
     expect(payload.amount).toBe(38.96);
     expect(payload.orderDate).toBe("2024-10-17");
     expect(payload.lineItems).toEqual([
@@ -74,7 +74,7 @@ describe("toUsBankOrder", () => {
   it("warns when the amount isn't USD", () => {
     const { warnings } = toUsBankOrder(
       record({ currency: "EUR", totalAmount: "141.60" }),
-      { requestorName: "Marcus Holloway" },
+      { requestorName: "Jordan Reyes" },
     );
     expect(warnings.some((w) => w.includes("EUR"))).toBe(true);
   });

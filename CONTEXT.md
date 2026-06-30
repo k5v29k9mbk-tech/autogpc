@@ -51,6 +51,32 @@ What kind of document a capture is — `receipt`, `invoice`, `quote`, `vat_form`
 The set of supporting documents a record should carry for audit (receipt,
 invoice, quote, approval, other). Derived from DocType, then user-managed.
 
+**Authorization directory**:
+The Ramstein 700 CONS "Mandatory Authorization Directory" as data
+(`src/core/mandatoryAuth.ts`): item types that need extra approval before a GPC
+purchase, each with match keywords, the required doc/approval, and the approval
+authority. Detection is a keyword match the reviewer corrects after the fact.
+_Avoid_: classifier, rules engine.
+
+**MandatoryAuth**:
+A record's authorization state — the confirmed directory `categories`
+(auto-detected, reviewer-editable), `germanVendor` (drives the VAT-form
+requirement; seeded from EUR), and `delivered` (false drives the
+non-receipt-memo requirement).
+
+**Attachment**:
+A supporting document stored alongside a record beyond the primary receipt
+image — GPC purchase request, VAT form, non-receipt memo, or a directory
+approval. Metadata on the record; bytes in the same blob/Storage backend. Its
+`slotId` binds it to a **RequiredDoc** slot.
+
+**RequiredDoc**:
+A document slot an order must carry, derived from MandatoryAuth: the always-on
+base (receipt, GPC purchase request), the conditional ones (VAT, non-receipt
+memo), and one approval slot per detected category. Satisfied by the receipt
+image or a matching Attachment; missing slots surface on review and ride along
+to the US Bank order.
+
 **Record assembly**:
 The UI-free core module (`src/core/draft.ts`) that owns the staged transform
 **ExtractionResult → ReviewDraft → PurchaseRecord**: DocType inference,

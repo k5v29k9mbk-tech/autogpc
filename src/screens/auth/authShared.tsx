@@ -4,6 +4,7 @@
 // disabled this sprint.
 
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { Logo } from "../../components/Logo";
 import {
   IconAlert,
@@ -72,6 +73,47 @@ export function FieldError({ id, children }: { id: string; children: ReactNode }
       <IconAlert width={12} height={12} />
       {children}
     </span>
+  );
+}
+
+/**
+ * Clickwrap consent checkbox + liability disclaimer, linking to /terms. Shared
+ * by the signup form and the OAuth consent gate so the wording stays identical.
+ * Unchecked by default; the caller gates account creation on `checked`.
+ */
+export function ConsentCheckbox({
+  checked,
+  onChange,
+  error,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  error?: string | null;
+}) {
+  const id = useId();
+  return (
+    <div className="field">
+      <label className="consent" htmlFor={id}>
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-err` : undefined}
+        />
+        <span>
+          I understand AutoGPC automates work on my behalf, that extractions and uploads may be
+          wrong or irreversible, that I am responsible for verifying every result before relying on
+          it, and I accept the{" "}
+          <Link to="/terms" target="_blank" rel="noopener noreferrer">
+            Terms of Use &amp; Disclaimer
+          </Link>
+          .
+        </span>
+      </label>
+      {error && <FieldError id={`${id}-err`}>{error}</FieldError>}
+    </div>
   );
 }
 

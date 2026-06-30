@@ -6,6 +6,7 @@
 
 import type { Session, User, AuthError as SupabaseError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabaseClient";
+import { TERMS_VERSION } from "../lib/terms";
 import {
   AuthError,
   type AuthProvider,
@@ -46,6 +47,7 @@ function toAuthUser(user: User | null): AuthUser | null {
     firstName,
     lastName,
     fullName,
+    termsAcceptedVersion: metaString(meta.terms_version),
   };
 }
 
@@ -128,6 +130,11 @@ export const supabaseAuthProvider: AuthProvider = {
           first_name: firstName,
           last_name: lastName,
           full_name: `${firstName} ${lastName}`.trim(),
+          // Auditable clickwrap record. The signup form (CreateAccount) gates on
+          // an explicit, unchecked-by-default consent box, so reaching signUp
+          // means the user accepted; we record which version and when.
+          terms_version: TERMS_VERSION,
+          terms_accepted_at: new Date().toISOString(),
         },
       },
     });
@@ -194,6 +201,20 @@ export const supabaseAuthProvider: AuthProvider = {
     if (error) throw mapError(error, "Could not update your profile.");
     const user = toAuthUser(data.user);
     if (!user) throw new AuthError("unknown", "Profile updated but no user was returned.");
+    return user;
+  },
+
+  async acceptTerms(): Promise<AuthUser> {
+    // updateUser merges into user_metadata, so name fields are preserved.
+    const { data, error } = await getSupabaseClient().auth.updateUser({
+      data: {
+        terms_version: TERMS_VERSION,
+        terms_accepted_at: new Date().toISOString(),
+      },
+    });
+    if (error) throw mapError(error, "Could not record your acceptance.");
+    const user = toAuthUser(data.user);
+    if (!user) throw new AuthError("unknown", "Acceptance recorded but no user was returned.");
     return user;
   },
 

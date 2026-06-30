@@ -8,10 +8,12 @@ import { formatAmount, formatDateUS, orDash, toISODate } from "../lib/format";
 import { documentsMissing, documentsPresent, toJson, toStructuredText } from "../lib/exportRecord";
 import { USBANK_ENABLED, UsBankOrderCard } from "../components/UsBankOrderCard";
 import { Section889Field } from "../components/Section889Field";
+import { MandatoryAuthCard } from "../components/MandatoryAuthCard";
 import {
   DOC_TYPE_LABELS,
   STATUS_LABELS,
   STATUS_ORDER,
+  emptyMandatoryAuth,
   type DocType,
   type DocumentChecklist,
   type PurchaseRecord,
@@ -288,6 +290,17 @@ export function RecordDetail() {
           />
         </div>
       )}
+
+      {/* Mandatory authorization + supporting documents. Edits persist
+          immediately so the gathered docs are ready for the US Bank handoff. */}
+      <MandatoryAuthCard
+        recordId={record.id}
+        hasReceiptImage={!!record.imageUri}
+        value={record.mandatoryAuth ?? emptyMandatoryAuth()}
+        attachments={record.attachments ?? []}
+        onChange={(mandatoryAuth) => updateRecord({ ...record, mandatoryAuth })}
+        onAttachmentsChange={(attachments) => updateRecord({ ...record, attachments })}
+      />
 
       {/* US Bank order handoff */}
       {USBANK_ENABLED && <UsBankOrderCard record={record} />}

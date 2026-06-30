@@ -404,6 +404,7 @@ export function Landing() {
             <a href="#how">How it works</a>
             <a href="#capabilities">Capabilities</a>
             <a href="#security">Security</a>
+            <Link to="/terms">Terms</Link>
             <Link to="/login">Sign in</Link>
           </nav>
         </div>

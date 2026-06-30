@@ -21,13 +21,15 @@ export function summaryDocument(record: PurchaseRecord): UsBankDocument {
   };
 }
 
-/** The receipt image, if the record has a resolvable one. Reads the bytes. */
-export async function receiptDocument(
-  record: PurchaseRecord,
+/** Read a resolvable image/blob URI into a US Bank document, or null. */
+async function uriToDocument(
+  uri: string,
+  filename: string,
+  contentType: string | undefined,
   resolveImage: (uri: string) => Promise<string | null>,
 ): Promise<UsBankDocument | null> {
-  if (!record.imageUri) return null;
-  const src = await resolveImage(record.imageUri);
+  if (!uri) return null;
+  const src = await resolveImage(uri);
   if (!src) return null;
   const blob = await (await fetch(src)).blob();
   const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -37,12 +39,28 @@ export async function receiptDocument(
     fr.readAsDataURL(blob);
   });
   const dataBase64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
-  const contentType = blob.type || "image/jpeg";
-  const ext = (contentType.split("/")[1] || "jpg").split("+")[0];
-  return { filename: `receipt-${record.id}.${ext}`, contentType, dataBase64 };
+  return { filename, contentType: contentType || blob.type || "application/octet-stream", dataBase64 };
 }
 
-/** Summary always; receipt when available. A broken image never blocks the order. */
+/** The receipt image, if the record has a resolvable one. Reads the bytes. */
+export async function receiptDocument(
+  record: PurchaseRecord,
+  resolveImage: (uri: string) => Promise<string | null>,
+): Promise<UsBankDocument | null> {
+  if (!record.imageUri) return null;
+  const src = await resolveImage(record.imageUri);
+  if (!src) return null;
+  const blob = await (await fetch(src)).blob();
+  const contentType = blob.type || "image/jpeg";
+  const ext = (contentType.split("/")[1] || "jpg").split("+")[0];
+  return uriToDocument(record.imageUri, `receipt-${record.id}.${ext}`, contentType, resolveImage);
+}
+
+/**
+ * Summary always; receipt + every supporting document (GPC purchase request,
+ * VAT form, non-receipt memo, mandatory-authorization approvals) when each is
+ * resolvable. A single broken document never blocks the order.
+ */
 export async function buildUsBankDocuments(
   record: PurchaseRecord,
   resolveImage: (uri: string) => Promise<string | null>,
@@ -53,6 +71,14 @@ export async function buildUsBankDocuments(
     if (receipt) docs.push(receipt);
   } catch {
     // A receipt that won't load shouldn't block submission; summary still goes.
+  }
+  for (const att of record.attachments ?? []) {
+    try {
+      const doc = await uriToDocument(att.uri, att.filename, att.contentType, resolveImage);
+      if (doc) docs.push(doc);
+    } catch {
+      // Skip a broken attachment rather than failing the whole submission.
+    }
   }
   return docs;
 }

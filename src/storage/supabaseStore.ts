@@ -76,6 +76,8 @@ function toRow(r: PurchaseRecord): Row {
     designation_889: r.designation889,
     us_bank_fields: r.usBank ?? null,
     section_889: r.section889,
+    mandatory_auth: r.mandatoryAuth ?? null,
+    attachments: r.attachments ?? null,
     raw_ocr_text: r.rawOcrText,
     image_uri: r.imageUri,
     status: r.status,
@@ -106,6 +108,8 @@ function fromRow(row: Row): PurchaseRecord {
     designation889: row.designation_889 ?? null,
     usBank: row.us_bank_fields ?? null,
     section889: row.section_889 ?? null,
+    mandatoryAuth: row.mandatory_auth ?? null,
+    attachments: row.attachments ?? null,
     rawOcrText: row.raw_ocr_text,
     imageUri: row.image_uri,
     status: row.status,
@@ -142,25 +146,40 @@ export const supabaseStore: RecordStore = {
 
   async deleteRecord(id) {
     const client = getSupabaseClient();
-    // Best-effort image cleanup first; never block the row delete on it.
+    // Best-effort image cleanup first; never block the row delete on it. Remove
+    // the receipt file (<uid>/<id>) plus any attachment blobs in its folder
+    // (<uid>/<id>/<attachmentId>).
     try {
       const uid = await currentUserId();
-      await client.storage.from(BUCKET).remove([`${uid}/${id}`]);
+      const paths = [`${uid}/${id}`];
+      const { data: children } = await client.storage.from(BUCKET).list(`${uid}/${id}`);
+      for (const obj of children ?? []) paths.push(`${uid}/${id}/${obj.name}`);
+      await client.storage.from(BUCKET).remove(paths);
     } catch {
-      /* image may not exist; ignore */
+      /* images may not exist; ignore */
     }
     const { error } = await client.from(TABLE).delete().eq("id", id);
     if (error) throw error;
   },
 
-  async putImage(id, blob) {
+  async putImage(key, blob) {
     const uid = await currentUserId();
-    const path = `${uid}/${id}`;
+    const path = `${uid}/${key}`;
     const { error } = await getSupabaseClient()
       .storage.from(BUCKET)
       .upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
     if (error) throw error;
     return STORAGE_URI_PREFIX + path;
+  },
+
+  async deleteImage(uri) {
+    if (!uri.startsWith(STORAGE_URI_PREFIX)) return; // data:/http: — not ours
+    const path = uri.slice(STORAGE_URI_PREFIX.length);
+    try {
+      await getSupabaseClient().storage.from(BUCKET).remove([path]);
+    } catch {
+      /* best-effort */
+    }
   },
 
   async resolveImageSrc(imageUri) {

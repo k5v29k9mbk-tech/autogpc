@@ -19,12 +19,15 @@ import {
 import { Field } from "../components/ui";
 import { confidenceBucket, toISODate } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
+import { MandatoryAuthCard } from "../components/MandatoryAuthCard";
+import { suggestSpecialPreApproval } from "../core/mandatoryAuth";
 import { IconEye, IconTrash } from "../components/icons";
 import {
   DESIGNATION_889_OPTIONS,
   DOC_TYPE_LABELS,
   STATUS_LABELS,
   STATUS_ORDER,
+  emptyMandatoryAuth,
   type DocType,
   type LineItem,
   type RecordStatus,
@@ -41,6 +44,10 @@ export function Review() {
   const { draft, setDraft, addRecord } = useStore();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // The record's id, fixed up front so supporting documents uploaded during
+  // review are keyed to it (and carried onto the record at save).
+  const [recordId] = useState(newId());
 
   // Receipts don't carry the requestor — default it to the signed-in cardholder.
   const cardholderName =
@@ -67,8 +74,9 @@ export function Review() {
       emergencyTypeOperation: DEFAULT_ETO,
       designation889: "",
       // Required US Bank dropdowns — left blank so the reviewer must consciously
-      // pick each one (they can't be inferred from a receipt).
-      specialPreApproval: "",
+      // pick each one (they can't be inferred from a receipt). Special
+      // Pre-Approval is the exception: seed it from the detected categories.
+      specialPreApproval: suggestSpecialPreApproval(draft?.mandatoryAuth?.categories ?? []),
       delegatedProcurementAuthority: "",
       prePurchaseApprovals: "",
       section508Consideration: "",
@@ -80,6 +88,8 @@ export function Review() {
       status: "needs_review",
       docType: draft?.docType ?? "receipt",
       lineItems: draft?.lineItems ?? [],
+      mandatoryAuth: draft?.mandatoryAuth ?? emptyMandatoryAuth(),
+      attachments: [],
     };
   });
 
@@ -171,8 +181,7 @@ export function Review() {
       return;
     }
     setMissing([]);
-    const id = newId();
-    const record = { ...recordFromDraft(draft, form, { id, finishedAt: Date.now() }), section889 };
+    const record = { ...recordFromDraft(draft, form, { id: recordId, finishedAt: Date.now() }), section889 };
     await addRecord(record, draft.imageBlob);
     setDraft(null);
     navigate("/records");
@@ -366,6 +375,16 @@ export function Review() {
           </div>
         )}
       </div>
+
+      {/* Mandatory authorization + supporting documents */}
+      <MandatoryAuthCard
+        recordId={recordId}
+        hasReceiptImage={!!draft.imageUri}
+        value={form.mandatoryAuth}
+        attachments={form.attachments}
+        onChange={(v) => set("mandatoryAuth", v)}
+        onAttachmentsChange={(a) => set("attachments", a)}
+      />
 
       {/* Raw OCR */}
       <div className="card">

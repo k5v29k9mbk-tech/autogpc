@@ -451,6 +451,48 @@ button {
   gap: var(--s2);
 }
 
+/* Signup consent (clickwrap). Overrides the muted, small .field label so the
+   disclaimer is legible, and aligns the box to the first line of text. */
+.consent {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.consent input[type="checkbox"] {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* --- Legal / Terms page ---------------------------------------------------- */
+
+.legal-body {
+  gap: var(--s4);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: var(--s2);
+}
+
+.legal-body h2 {
+  font-size: 14px;
+  margin: 0 0 var(--s2);
+}
+
+.legal-body p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 .input,
 .select,
 .textarea {

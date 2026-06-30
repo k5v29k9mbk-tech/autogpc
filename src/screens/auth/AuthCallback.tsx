@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, AuthError } from "../../auth";
-import { AuthShell, Banner } from "./authShared";
+import { AuthShell, Banner, ConsentCheckbox } from "./authShared";
 import { IconCheck } from "../../components/icons";
+import { TERMS_VERSION } from "../../lib/terms";
 
 type Phase =
   | { kind: "working" }
   | { kind: "success" }
+  | { kind: "consent" }
   | { kind: "error"; message: string };
 
 /**
@@ -16,12 +18,22 @@ type Phase =
  * or shows a clear error with a path back to sign-in.
  */
 export function AuthCallback() {
-  const { completeEmailConfirmation } = useAuth();
+  const { completeEmailConfirmation, acceptTerms, logout } = useAuth();
   const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>({ kind: "working" });
+  const [accepted, setAccepted] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [consentBusy, setConsentBusy] = useState(false);
   // StrictMode double-invokes effects in dev; the auth code is single-use, so
   // guard against running the exchange twice.
   const ran = useRef(false);
+
+  const finish = () => {
+    setPhase({ kind: "success" });
+    // Clean the token out of the address bar, then head into the app.
+    window.history.replaceState({}, "", "/auth/callback");
+    setTimeout(() => navigate("/", { replace: true }), 1200);
+  };
 
   useEffect(() => {
     if (ran.current) return;
@@ -29,11 +41,16 @@ export function AuthCallback() {
 
     (async () => {
       try {
-        await completeEmailConfirmation(window.location.href);
-        setPhase({ kind: "success" });
-        // Clean the token out of the address bar, then head into the app.
-        window.history.replaceState({}, "", "/auth/callback");
-        setTimeout(() => navigate("/", { replace: true }), 1200);
+        const user = await completeEmailConfirmation(window.location.href);
+        // OAuth accounts don't pass through our signup form, so consent is
+        // collected here on first sign-in. Password accounts were stamped at
+        // signUp and skip the gate.
+        if (user.termsAcceptedVersion !== TERMS_VERSION) {
+          window.history.replaceState({}, "", "/auth/callback");
+          setPhase({ kind: "consent" });
+          return;
+        }
+        finish();
       } catch (err) {
         const message =
           err instanceof AuthError
@@ -44,12 +61,77 @@ export function AuthCallback() {
     })();
   }, [completeEmailConfirmation, navigate]);
 
+  const onAccept = async () => {
+    if (!accepted) {
+      setConsentError("Please accept the Terms of Use to continue.");
+      return;
+    }
+    setConsentBusy(true);
+    setConsentError(null);
+    try {
+      await acceptTerms();
+      finish();
+    } catch (err) {
+      setConsentBusy(false);
+      setConsentError(
+        err instanceof AuthError ? err.message : "Could not record your acceptance. Try again.",
+      );
+    }
+  };
+
+  // Declining must not leave an un-consented session live.
+  const onDecline = async () => {
+    try {
+      await logout();
+    } finally {
+      navigate("/login", { replace: true });
+    }
+  };
+
   if (phase.kind === "working") {
     return (
       <AuthShell title="Signing you in…">
         <div className="row" style={{ justifyContent: "center", color: "var(--text-muted)" }}>
           <span className="spinner" />
           <span>Completing sign-in.</span>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  if (phase.kind === "consent") {
+    return (
+      <AuthShell
+        title="One more step"
+        subtitle="Please review and accept before continuing."
+      >
+        <div className="stack">
+          {consentError && <Banner variant="error">{consentError}</Banner>}
+          <ConsentCheckbox
+            checked={accepted}
+            onChange={(next) => {
+              setAccepted(next);
+              if (next) setConsentError(null);
+            }}
+            error={consentError}
+          />
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={onAccept}
+            disabled={consentBusy || !accepted}
+          >
+            {consentBusy ? <span className="spinner" /> : null}
+            {consentBusy ? "Saving…" : "Accept and continue"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={onDecline}
+            disabled={consentBusy}
+          >
+            Decline and sign out
+          </button>
         </div>
       </AuthShell>
     );

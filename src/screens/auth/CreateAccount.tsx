@@ -9,7 +9,14 @@ import {
   validatePasswordConfirm,
 } from "../../lib/validation";
 import { IconMail } from "../../components/icons";
-import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./authShared";
+import {
+  AuthShell,
+  Banner,
+  ConsentCheckbox,
+  FieldError,
+  PasswordInput,
+  ProviderSeams,
+} from "./authShared";
 
 export function CreateAccount() {
   const { signUp, signInWithOAuth, resendConfirmation, continueAsGuest, configured } = useAuth();
@@ -23,6 +30,9 @@ export function CreateAccount() {
 
   const goOAuth = (provider: "google" | "apple") => async () => {
     const label = provider === "apple" ? "Apple" : "Google";
+    // OAuth consent is collected at the callback gate (AuthCallback), since we
+    // can't record acceptance before the account exists. The checkbox below
+    // gates only the email/password path.
     setFormError(null);
     setOauthBusy(provider);
     try {
@@ -47,6 +57,9 @@ export function CreateAccount() {
   }>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Clickwrap consent: unchecked by default, gates every account-creation path.
+  const [accepted, setAccepted] = useState(false);
+  const [acceptError, setAcceptError] = useState<string | null>(null);
 
   // Once signup succeeds with confirmation pending, we swap the form for a
   // "check your email" panel. Signup is NOT treated as a login: no session yet.
@@ -58,6 +71,12 @@ export function CreateAccount() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setFormError(null);
+
+    if (!accepted) {
+      setAcceptError("Please accept the Terms of Use to continue.");
+      return;
+    }
+    setAcceptError(null);
 
     const firstNameErr = validateName(firstName, "First name");
     const lastNameErr = validateName(lastName, "Last name");
@@ -266,10 +285,19 @@ export function CreateAccount() {
           {errors.confirm && <FieldError id={`${confirmId}-err`}>{errors.confirm}</FieldError>}
         </div>
 
+        <ConsentCheckbox
+          checked={accepted}
+          onChange={(next) => {
+            setAccepted(next);
+            if (next) setAcceptError(null);
+          }}
+          error={acceptError}
+        />
+
         <button
           type="submit"
           className="btn btn-primary btn-lg btn-block"
-          disabled={submitting || !configured}
+          disabled={submitting || !configured || !accepted}
         >
           {submitting ? <span className="spinner" /> : null}
           {submitting ? "Creating account…" : "Create account"}

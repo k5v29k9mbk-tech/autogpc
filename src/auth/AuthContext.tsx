@@ -21,6 +21,7 @@ import {
 } from "react";
 import { supabaseAuthProvider } from "./supabaseAuthProvider";
 import { isSupabaseConfigured } from "./supabaseClient";
+import { rememberSignIn } from "./lastSignIn";
 import {
   AuthError,
   type AuthMode,
@@ -51,6 +52,8 @@ interface AuthContextValue {
   requestPasswordReset: (email: string) => Promise<void>;
   updatePassword: (newPassword: string) => Promise<void>;
   updateProfile: (profile: SignUpProfile) => Promise<AuthUser>;
+  /** Record acceptance of the current Terms (OAuth consent gate). */
+  acceptTerms: () => Promise<AuthUser>;
   /** Current session access token (for the SSO handoff), or null. */
   getAccessToken: () => Promise<string | null>;
 
@@ -121,6 +124,7 @@ export function AuthProviderComponent({
 
   const login = useCallback(async (email: string, password: string) => {
     const u = await providerRef.current.signInWithPassword(email, password);
+    rememberSignIn("password");
     sessionStorage.removeItem(GUEST_FLAG);
     setIsGuest(false);
     setUser(u);
@@ -155,10 +159,14 @@ export function AuthProviderComponent({
     return u;
   }, []);
 
-  const signInWithOAuth = useCallback(
-    (oauthProvider: OAuthProvider) => providerRef.current.signInWithOAuth(oauthProvider),
-    [],
-  );
+  const signInWithOAuth = useCallback((oauthProvider: OAuthProvider) => {
+    // Recorded at click time (the call redirects the whole page away). If the
+    // user bails out at the provider, the hint is stale until the next sign-in —
+    // harmless for a cosmetic hint. ponytail: read app_metadata.provider on the
+    // restored session instead if false positives ever matter.
+    rememberSignIn(oauthProvider);
+    return providerRef.current.signInWithOAuth(oauthProvider);
+  }, []);
 
   const requestPasswordReset = useCallback(
     (email: string) => providerRef.current.requestPasswordReset(email),
@@ -172,6 +180,12 @@ export function AuthProviderComponent({
 
   const updateProfile = useCallback(async (profile: SignUpProfile) => {
     const u = await providerRef.current.updateProfile(profile);
+    setUser(u);
+    return u;
+  }, []);
+
+  const acceptTerms = useCallback(async () => {
+    const u = await providerRef.current.acceptTerms();
     setUser(u);
     return u;
   }, []);
@@ -197,6 +211,7 @@ export function AuthProviderComponent({
       requestPasswordReset,
       updatePassword,
       updateProfile,
+      acceptTerms,
       getAccessToken,
     }),
     [
@@ -214,6 +229,7 @@ export function AuthProviderComponent({
       requestPasswordReset,
       updatePassword,
       updateProfile,
+      acceptTerms,
       getAccessToken,
     ],
   );

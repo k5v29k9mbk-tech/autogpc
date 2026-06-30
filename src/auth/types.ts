@@ -22,6 +22,13 @@ export interface AuthUser {
   firstName: string | null;
   lastName: string | null;
   fullName: string | null;
+  /**
+   * Which version of the Terms this account accepted, or null if none recorded.
+   * Password signups stamp it at signUp; OAuth accounts stamp it at the consent
+   * gate on first sign-in (AuthCallback). Compared against TERMS_VERSION to
+   * decide whether the gate must be shown.
+   */
+  termsAcceptedVersion: string | null;
 }
 
 /**
@@ -117,6 +124,14 @@ export interface AuthProvider {
    * returns the refreshed user. Throws AuthError on failure.
    */
   updateProfile(profile: SignUpProfile): Promise<AuthUser>;
+
+  /**
+   * Record acceptance of the current Terms version on the signed-in user
+   * (writes terms_version + terms_accepted_at). Used by the OAuth consent gate,
+   * where consent can't be recorded before the account exists. Returns the
+   * refreshed user. Throws AuthError on failure.
+   */
+  acceptTerms(): Promise<AuthUser>;
 
   /**
    * Complete an email-confirmation redirect: exchange the callback URL for a

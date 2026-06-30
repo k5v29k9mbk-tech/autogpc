@@ -1,8 +1,15 @@
 import { useId, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, AuthError } from "../../auth";
+import { lastSignIn } from "../../auth/lastSignIn";
 import { validateEmail } from "../../lib/validation";
 import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./authShared";
+
+const LAST_SIGN_IN_LABEL = {
+  password: "your email and password",
+  google: "Google",
+  apple: "Apple",
+} as const;
 
 export function Login() {
   const { login, signInWithOAuth, resendConfirmation, continueAsGuest, configured } = useAuth();
@@ -15,6 +22,7 @@ export function Login() {
   const dest = nextParam && nextParam.startsWith("/") ? nextParam : "/";
   const emailId = useId();
   const pwId = useId();
+  const lastUsed = lastSignIn();
   const [oauthBusy, setOauthBusy] = useState<"google" | "apple" | null>(null);
 
   const [email, setEmail] = useState("");
@@ -95,6 +103,12 @@ export function Login() {
             as a guest below.
           </Banner>
         </div>
+      )}
+
+      {lastUsed && (
+        <p className="sub" style={{ marginBottom: "var(--s4)" }}>
+          Last time, you signed in with {LAST_SIGN_IN_LABEL[lastUsed]}.
+        </p>
       )}
 
       <form className="stack" onSubmit={submit} noValidate>

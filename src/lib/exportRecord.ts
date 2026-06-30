@@ -7,6 +7,7 @@ import {
   type DocumentChecklist,
   type PurchaseRecord,
 } from "../core/types";
+import { authCategory, requiredDocuments } from "../core/mandatoryAuth";
 import { formatAmount, orDash } from "./format";
 
 const CHECKLIST_LABELS: Record<keyof DocumentChecklist, string> = {
@@ -62,6 +63,26 @@ export function toStructuredText(record: PurchaseRecord): string {
   lines.push("");
   lines.push(pair("Documents present:", present.length ? present.join(", ") : "none"));
   lines.push(pair("Documents missing:", missing.length ? missing.join(", ") : "none"));
+
+  // Mandatory authorization (700 CONS directory) + the supporting documents
+  // gathered for it.
+  const ma = record.mandatoryAuth;
+  if (ma && (ma.categories.length || ma.germanVendor || !ma.delivered)) {
+    lines.push("");
+    lines.push("Mandatory authorization:");
+    for (const id of ma.categories) {
+      const cat = authCategory(id);
+      if (cat) lines.push(`  - ${cat.label}: ${cat.requiredDoc} (${cat.authority})`);
+    }
+    const attached = new Set((record.attachments ?? []).map((a) => a.slotId));
+    const reqMissing = requiredDocuments(ma.categories, {
+      germanVendor: ma.germanVendor,
+      delivered: ma.delivered,
+    })
+      .filter((d) => !attached.has(d.id) && !(d.id === "receipt" && record.imageUri))
+      .map((d) => d.label);
+    lines.push(pair("Docs still missing:", reqMissing.length ? reqMissing.join(", ") : "none"));
+  }
 
   if (record.notes.trim()) {
     lines.push("");
