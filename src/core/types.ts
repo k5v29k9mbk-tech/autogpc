@@ -16,6 +16,49 @@ export type DocumentChecklist = {
   otherDocsUploaded: boolean;
 };
 
+/** The kind of supporting document an attachment is. */
+export type DocCategory =
+  | "receipt"
+  | "purchase_request" // GPC purchase request (supervisor + RA signed)
+  | "vat_form"
+  | "non_receipt_memo"
+  | "approval" // a mandatory-authorization approval/waiver doc
+  | "other";
+
+/**
+ * A supporting document stored alongside a record (beyond the primary receipt
+ * image in `imageUri`). The bytes live in the blob/Storage backend at `uri`
+ * (resolved via the store's resolveImage); this is the metadata. `slotId` binds
+ * it to a RequiredDoc slot (see core/mandatoryAuth) so the UI knows which
+ * requirement it satisfies.
+ */
+export type Attachment = {
+  id: string;
+  slotId: string; // matches RequiredDoc.id, e.g. "vat_form" or "approval:it-computers"
+  category: DocCategory;
+  label: string;
+  filename: string;
+  contentType: string;
+  uri: string;
+  uploadedAt: string;
+};
+
+/**
+ * Mandatory-authorization state for a record: the confirmed catalog categories
+ * (auto-detected, reviewer-editable), whether the vendor is German (drives the
+ * VAT-form requirement; auto-seeded from EUR), and whether the item has been
+ * delivered (false drives the non-receipt-memo requirement).
+ */
+export type MandatoryAuth = {
+  categories: string[]; // AuthCategory ids
+  germanVendor: boolean;
+  delivered: boolean;
+};
+
+export function emptyMandatoryAuth(): MandatoryAuth {
+  return { categories: [], germanVendor: false, delivered: true };
+}
+
 export type RecordStatus =
   | "needs_review"
   | "reviewed"
@@ -123,6 +166,10 @@ export type PurchaseRecord = {
   // records saved before these fields existed still read back cleanly.
   usBank?: UsBankOrderFields | null;
   section889: Saved889 | null; // saved 889 determination, set on the record detail page
+  // Mandatory-authorization detection + supporting documents. Optional/nullable
+  // so records saved before these fields existed read back cleanly.
+  mandatoryAuth?: MandatoryAuth | null;
+  attachments?: Attachment[] | null;
   rawOcrText: string;
   imageUri: string;
   status: RecordStatus;

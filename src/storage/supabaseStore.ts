@@ -8,10 +8,12 @@
 import { getSupabaseClient } from "../auth/supabaseClient";
 import type { RecordStore } from "../core/storage";
 import type {
+  Attachment,
   DocType,
   DocumentChecklist,
   ExtractionSource,
   LineItem,
+  MandatoryAuth,
   PurchaseRecord,
   RecordStatus,
   Saved889,
@@ -42,6 +44,8 @@ type Row = {
   designation_889: string | null;
   us_bank_fields: UsBankOrderFields | null;
   section_889: Saved889 | null;
+  mandatory_auth: MandatoryAuth | null;
+  attachments: Attachment[] | null;
   raw_ocr_text: string;
   image_uri: string;
   status: RecordStatus;

@@ -1,21 +1,20 @@
 // /api/usbank-order — Vercel serverless proxy that creates an order in the
 // US Bank "Access Online" clone (k5v29k9mbk-tech/usbank-clone).
 //
-// Why a proxy: the clone has no CORS headers, and we don't want its login
-// credentials or bearer token in the browser. This function holds the service
-// cardholder credentials (server-side env), logs in, resolves the requestor
-// name from the cardholder identity, and POSTs the order.
+// Why a proxy: the clone has no CORS headers, and we don't want to do the
+// token exchange (or hold a bearer token) in the browser. The browser sends the
+// signed-in autogpc user's short-lived Supabase access token; this function
+// exchanges it for a clone session via the clone's /api/auth/supabase door, so
+// the order lands on THAT user's Access Online account (the clone provisions a
+// per-user sandbox keyed to the Supabase identity). No shared service login —
+// the clone is SSO-only and rejects password logins for provisioned users.
 //
 // Env (server-only, NOT VITE_):
 //   USBANK_API_BASE   e.g. https://test.autogpc.com
-//   USBANK_USERNAME   e.g. mholloway
-//   USBANK_PASSWORD   e.g. password123
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const BASE = process.env.USBANK_API_BASE;
-const USERNAME = process.env.USBANK_USERNAME;
-const PASSWORD = process.env.USBANK_PASSWORD;
 
 type LineItem = {
   productCode?: string | null;
@@ -30,16 +29,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(405).json({ error: "method_not_allowed", message: "Use POST." });
     return;
   }
-  if (!BASE || !USERNAME || !PASSWORD) {
-    res.status(500).json({
-      error: "config_missing",
-      message: "USBANK_API_BASE / USBANK_USERNAME / USBANK_PASSWORD are not set.",
-    });
+  if (!BASE) {
+    res.status(500).json({ error: "config_missing", message: "USBANK_API_BASE is not set." });
     return;
   }
 
   try {
-    const { merchantName, requestorName, amount, orderDate, lineItems, documents, autoMatch } =
+    const { merchantName, requestorName, amount, orderDate, lineItems, documents, autoMatch, accessToken } =
       (req.body ?? {}) as {
         merchantName?: string;
         requestorName?: string;
@@ -48,25 +44,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         lineItems?: LineItem[];
         documents?: { filename: string; contentType: string; dataBase64: string }[];
         autoMatch?: boolean;
+        accessToken?: string;
       };
     if (!merchantName) {
       res.status(400).json({ error: "bad_request", message: "merchantName is required." });
       return;
     }
-
-    // 1) Log in to the clone.
-    const loginRes = await fetch(`${BASE}/api/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: USERNAME, password: PASSWORD }),
-    });
-    if (!loginRes.ok) {
-      res.status(502).json({ error: "login_failed", message: `US Bank login failed (${loginRes.status}).` });
+    if (!accessToken) {
+      res.status(401).json({ error: "unauthenticated", message: "Sign in to autogpc first — no access token supplied." });
       return;
     }
-    const { token } = (await loginRes.json()) as { token?: string };
+
+    // 1) Exchange the signed-in autogpc user's Supabase token for a clone
+    //    session, so everything below acts on THAT user's own account.
+    const authRes = await fetch(`${BASE}/api/auth/supabase`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken }),
+    });
+    if (!authRes.ok) {
+      res.status(502).json({ error: "auth_failed", message: `US Bank SSO exchange failed (${authRes.status}).` });
+      return;
+    }
+    const { token } = (await authRes.json()) as { token?: string };
     if (!token) {
-      res.status(502).json({ error: "login_failed", message: "US Bank login returned no token." });
+      res.status(502).json({ error: "auth_failed", message: "US Bank SSO exchange returned no token." });
       return;
     }
     const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };

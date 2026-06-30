@@ -7,7 +7,7 @@ import {
   type RecordEdits,
   type ReviewDraft,
 } from "./draft";
-import { emptyChecklist } from "./types";
+import { emptyChecklist, emptyMandatoryAuth } from "./types";
 import type { ExtractionResult } from "./extraction/extractionService";
 
 function result(over: Partial<ExtractionResult> = {}): ExtractionResult {
@@ -45,6 +45,8 @@ const EDITS: RecordEdits = {
   status: "needs_review",
   docType: "receipt",
   lineItems: [{ description: "Coffee", quantity: null, unitPrice: null, total: "49.99" }],
+  mandatoryAuth: emptyMandatoryAuth(),
+  attachments: [],
 };
 
 describe("inferDocType", () => {
@@ -102,6 +104,7 @@ describe("recordFromDraft", () => {
     imageBlob: null,
     docType: "receipt",
     captureStartedAt: 10_000,
+    mandatoryAuth: emptyMandatoryAuth(),
   };
 
   it("trims fields and coerces blank nullable fields to null", () => {

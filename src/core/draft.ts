@@ -9,13 +9,16 @@
 
 import { emptyChecklist } from "./types";
 import type {
+  Attachment,
   DocType,
   DocumentChecklist,
   ExtractionSource,
   LineItem,
+  MandatoryAuth,
   PurchaseRecord,
   RecordStatus,
 } from "./types";
+import { detectAuthCategories } from "./mandatoryAuth";
 import type { ExtractionResult } from "./extraction/extractionService";
 
 /**
@@ -33,6 +36,8 @@ export type ReviewDraft = {
   imageBlob: Blob | null; // pending blob to persist on save
   docType: DocType;
   captureStartedAt: number; // ms epoch — start of the capture timer
+  /** Auto-detected mandatory-authorization seed; reviewer edits before save. */
+  mandatoryAuth: MandatoryAuth;
 };
 
 /** The fields a reviewer confirms/corrects before a draft becomes a record. */
@@ -63,6 +68,9 @@ export type RecordEdits = {
   status: RecordStatus;
   docType: DocType;
   lineItems: LineItem[];
+  // Mandatory-authorization detection + the supporting docs uploaded on review.
+  mandatoryAuth: MandatoryAuth;
+  attachments: Attachment[];
 };
 
 /**
@@ -102,6 +110,7 @@ export function draftFromResult(
     docType?: DocType;
   },
 ): ReviewDraft {
+  const currency = (result.fields.currency ?? "").trim().toUpperCase();
   return {
     fields: result.fields,
     rawText: result.rawText,
@@ -112,6 +121,11 @@ export function draftFromResult(
     imageBlob: opts.imageBlob,
     docType: opts.docType ?? inferDocType(result),
     captureStartedAt: opts.captureStartedAt,
+    mandatoryAuth: {
+      categories: detectAuthCategories(result.lineItems, result.rawText, result.fields.totalAmount),
+      germanVendor: currency === "EUR", // VAT-relief form needed; reviewer overrides
+      delivered: true,
+    },
   };
 }
 
@@ -155,6 +169,8 @@ export function recordFromDraft(
       lineItemTax: edits.lineItemTax.trim() || "0.00",
     },
     section889: null, // set later on the record detail page via the 889 lookup
+    mandatoryAuth: edits.mandatoryAuth,
+    attachments: edits.attachments,
     rawOcrText: draft.rawText,
     imageUri: draft.imageUri,
     status: edits.status,

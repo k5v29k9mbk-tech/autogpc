@@ -15,8 +15,15 @@ export interface RecordStore {
   saveRecord(record: PurchaseRecord): Promise<void>;
   deleteRecord(id: string): Promise<void>;
 
-  /** Persist an image blob; returns the `imageUri` to store on the record. */
-  putImage(id: string, blob: Blob): Promise<string>;
+  /**
+   * Persist a blob under `key`; returns the URI to store (receipt image or a
+   * supporting-document attachment). `key` is opaque to callers — the record id
+   * for the receipt, or `<recordId>/<attachmentId>` for attachments.
+   */
+  putImage(key: string, blob: Blob): Promise<string>;
+
+  /** Delete a blob previously returned by putImage. Best-effort; never throws. */
+  deleteImage(uri: string): Promise<void>;
 
   /**
    * Turn a stored `imageUri` into something an <img> can display. Passes data:

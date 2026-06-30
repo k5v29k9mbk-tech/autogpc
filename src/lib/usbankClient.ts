@@ -19,8 +19,11 @@ export type CreatedOrder = {
 
 export async function submitUsBankOrder(
   payload: UsBankOrderPayload,
-  opts: { documents?: UsBankDocument[]; autoMatch?: boolean } = {},
+  opts: { documents?: UsBankDocument[]; autoMatch?: boolean; accessToken?: string | null } = {},
 ): Promise<CreatedOrder> {
+  if (!opts.accessToken) {
+    throw new Error("Sign in to autogpc before creating a US Bank order.");
+  }
   const res = await fetch("/api/usbank-order", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -28,6 +31,7 @@ export async function submitUsBankOrder(
       ...payload,
       documents: opts.documents ?? [],
       autoMatch: opts.autoMatch ?? true,
+      accessToken: opts.accessToken,
     }),
   });
   const body = (await res.json().catch(() => ({}))) as {

@@ -26,7 +26,7 @@ export const USBANK_ENABLED = import.meta.env.VITE_USBANK_ENABLED === "true";
 const APP_URL = import.meta.env.VITE_USBANK_APP_URL;
 
 export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const { updateRecord, resolveImage } = useStore();
 
   // Requestor defaults to the signed-in cardholder's name; the reviewer can
@@ -64,8 +64,9 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
     setSubmitting(true);
     setError(null);
     try {
+      const accessToken = await getAccessToken();
       const documents = await buildUsBankDocuments(record, resolveImage);
-      const created = await submitUsBankOrder(draft.payload, { documents, autoMatch: true });
+      const created = await submitUsBankOrder(draft.payload, { documents, autoMatch: true, accessToken });
       setResult(created);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create the order.");

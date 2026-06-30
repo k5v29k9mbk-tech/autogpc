@@ -105,9 +105,20 @@ export const webStorage: RecordStore = {
     await idbDelete(id).catch(() => undefined);
   },
 
-  async putImage(id, blob) {
-    await idbPut(id, blob);
-    return BLOB_URI_PREFIX + id;
+  async putImage(key, blob) {
+    await idbPut(key, blob);
+    return BLOB_URI_PREFIX + key;
+  },
+
+  async deleteImage(uri) {
+    if (!uri.startsWith(BLOB_URI_PREFIX)) return; // data:/http: — nothing local to drop
+    const key = uri.slice(BLOB_URI_PREFIX.length);
+    const cached = objectUrlCache.get(uri);
+    if (cached) {
+      URL.revokeObjectURL(cached);
+      objectUrlCache.delete(uri);
+    }
+    await idbDelete(key).catch(() => undefined);
   },
 
   async resolveImageSrc(imageUri) {
