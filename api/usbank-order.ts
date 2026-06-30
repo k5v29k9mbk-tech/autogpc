@@ -39,13 +39,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { merchantName, requestorName, amount, orderDate, lineItems } = (req.body ?? {}) as {
-      merchantName?: string;
-      requestorName?: string;
-      amount?: number;
-      orderDate?: string;
-      lineItems?: LineItem[];
-    };
+    const { merchantName, requestorName, amount, orderDate, lineItems, documents, autoMatch } =
+      (req.body ?? {}) as {
+        merchantName?: string;
+        requestorName?: string;
+        amount?: number;
+        orderDate?: string;
+        lineItems?: LineItem[];
+        documents?: { filename: string; contentType: string; dataBase64: string }[];
+        autoMatch?: boolean;
+      };
     if (!merchantName) {
       res.status(400).json({ error: "bad_request", message: "merchantName is required." });
       return;
@@ -81,25 +84,61 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // 3) Create the order.
+    // 3) Create the order. The clone spawns a matching statement line for it
+    //    and returns that as `matchSuggestion`.
     const orderRes = await fetch(`${BASE}/api/orders`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ merchantName, requestorName: requestor, amount, orderDate, lineItems }),
     });
-    const body = (await orderRes.json().catch(() => ({}))) as {
-      order?: unknown;
+    const created = (await orderRes.json().catch(() => ({}))) as {
+      order?: { controlNumber?: string; merchantName?: string; amount?: number };
+      matchSuggestion?: { id?: number; merchant?: string; amount?: number; transDate?: string };
       message?: string;
     };
     if (!orderRes.ok) {
       res.status(502).json({
         error: "order_failed",
-        message: body.message ?? `Order create failed (${orderRes.status}).`,
+        message: created.message ?? `Order create failed (${orderRes.status}).`,
       });
       return;
     }
+    const order = created.order ?? {};
+    const controlNumber = order.controlNumber;
+    const suggestion = created.matchSuggestion;
 
-    res.status(201).json({ ok: true, order: body.order });
+    // 4) Match the order to the statement line the clone just spawned.
+    let matched: { merchant: string; amount: number; transDate: string } | null = null;
+    if (autoMatch !== false && controlNumber && suggestion?.id) {
+      const matchRes = await fetch(`${BASE}/api/orders/match`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ controlNumber, transactionIds: [suggestion.id] }),
+      });
+      if (matchRes.ok) {
+        matched = {
+          merchant: suggestion.merchant ?? merchantName ?? "",
+          amount: suggestion.amount ?? Number(amount) ?? 0,
+          transDate: suggestion.transDate ?? "",
+        };
+      }
+    }
+
+    // 5) Upload supporting documents to the matched order.
+    let documentsUploaded = 0;
+    if (controlNumber && Array.isArray(documents) && documents.length > 0) {
+      const docRes = await fetch(`${BASE}/api/orders/${controlNumber}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ documents }),
+      });
+      if (docRes.ok) {
+        const docBody = (await docRes.json().catch(() => ({}))) as { count?: number };
+        documentsUploaded = docBody.count ?? documents.length;
+      }
+    }
+
+    res.status(201).json({ ok: true, order, matched, documentsUploaded });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("usbank-order proxy failed:", message);

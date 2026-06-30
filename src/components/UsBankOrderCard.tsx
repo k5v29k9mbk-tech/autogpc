@@ -13,7 +13,8 @@ import {
   GPC_CURRENCIES,
   toUsBankOrder,
 } from "../lib/usbankOrder";
-import { submitUsBankOrder } from "../lib/usbankClient";
+import { submitUsBankOrder, type CreatedOrder } from "../lib/usbankClient";
+import { buildUsBankDocuments } from "../lib/usbankDocuments";
 import { formatAmount } from "../lib/format";
 import { useAuth } from "../auth";
 import { useStore } from "../store";
@@ -26,7 +27,7 @@ const APP_URL = import.meta.env.VITE_USBANK_APP_URL;
 
 export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   const { user } = useAuth();
-  const { updateRecord } = useStore();
+  const { updateRecord, resolveImage } = useStore();
 
   // Requestor defaults to the signed-in cardholder's name; the reviewer can
   // override. `null` means "untouched" so the default keeps tracking the user
@@ -47,7 +48,7 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   );
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ controlNumber: string } | null>(null);
+  const [result, setResult] = useState<CreatedOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const draft = useMemo(
@@ -63,8 +64,9 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
     setSubmitting(true);
     setError(null);
     try {
-      const created = await submitUsBankOrder(draft.payload);
-      setResult({ controlNumber: created.controlNumber });
+      const documents = await buildUsBankDocuments(record, resolveImage);
+      const created = await submitUsBankOrder(draft.payload, { documents, autoMatch: true });
+      setResult(created);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to create the order.");
     } finally {
@@ -80,7 +82,28 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
           <div className="alert alert-success">
             <IconCheck width={16} height={16} />
             <div>
-              Order created in US Bank — Control Number <strong>{result.controlNumber}</strong>.
+              <strong>Done in US Bank.</strong>
+              <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em" }}>
+                <li style={{ fontSize: 13 }}>
+                  Order created — Control Number <strong>{result.controlNumber}</strong>.
+                </li>
+                <li style={{ fontSize: 13 }}>
+                  {result.matched ? (
+                    <>
+                      Matched to statement: {result.matched.merchant} ·{" "}
+                      {formatAmount(String(result.matched.amount), currency)}
+                      {result.matched.transDate ? ` · ${result.matched.transDate}` : ""}.
+                    </>
+                  ) : (
+                    "No statement matched."
+                  )}
+                </li>
+                <li style={{ fontSize: 13 }}>
+                  {result.documentsUploaded > 0
+                    ? `${result.documentsUploaded} document${result.documentsUploaded === 1 ? "" : "s"} uploaded to the order.`
+                    : "No documents uploaded."}
+                </li>
+              </ul>
             </div>
           </div>
           {APP_URL && (
@@ -104,8 +127,8 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
       <div className="card-title">Send to US Bank order</div>
       <div className="stack" style={{ gap: "var(--s4)" }}>
         <p className="muted" style={{ fontSize: 13 }}>
-          The fields US Bank requires, filled from this record. Confirm them, then create an Open
-          order on the cardholder's account.
+          The fields US Bank requires, filled from this record. Confirm them, then create the order,
+          match it to its statement, and attach the receipt — in one step, on the cardholder's account.
         </p>
 
         {/* Required fields, mirroring the US Bank Create-Order form */}
@@ -243,7 +266,7 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
             onClick={submit}
           >
             {submitting ? <span className="spinner" /> : null}
-            {submitting ? "Creating order…" : "Create order in US Bank"}
+            {submitting ? "Working in US Bank…" : "Create, match & attach in US Bank"}
           </button>
           {blocked && (
             <span className="muted" style={{ fontSize: 12 }}>
