@@ -69,6 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(502).json({ error: "login_failed", message: "US Bank login returned no token." });
       return;
     }
+    const authHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
 
     // 2) Resolve the requestor from the cardholder identity if not supplied.
     let requestor = (requestorName ?? "").trim();
@@ -88,7 +89,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     //    and returns that as `matchSuggestion`.
     const orderRes = await fetch(`${BASE}/api/orders`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      headers: authHeaders,
       body: JSON.stringify({ merchantName, requestorName: requestor, amount, orderDate, lineItems }),
     });
     const created = (await orderRes.json().catch(() => ({}))) as {
@@ -112,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (autoMatch !== false && controlNumber && suggestion?.id) {
       const matchRes = await fetch(`${BASE}/api/orders/match`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: authHeaders,
         body: JSON.stringify({ controlNumber, transactionIds: [suggestion.id] }),
       });
       if (matchRes.ok) {
@@ -129,7 +130,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (controlNumber && Array.isArray(documents) && documents.length > 0) {
       const docRes = await fetch(`${BASE}/api/orders/${controlNumber}/documents`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: authHeaders,
         body: JSON.stringify({ documents }),
       });
       if (docRes.ok) {
