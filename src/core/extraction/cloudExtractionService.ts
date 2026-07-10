@@ -62,6 +62,9 @@ async function compressForUpload(blob: Blob, maxEdge = 2000, quality = 0.82): Pr
     canvas.height = h;
     const ctx = canvas.getContext("2d");
     if (!ctx) return blob;
+    // JPEG has no alpha — without this, transparent PNG regions turn black.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, w, h);
     ctx.drawImage(bitmap, 0, 0, w, h);
     const out = await new Promise<Blob | null>((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", quality),

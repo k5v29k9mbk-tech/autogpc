@@ -119,7 +119,6 @@ export function Scan() {
             ref={inputRef}
             type="file"
             accept="image/*,application/pdf"
-            capture="environment"
             hidden
             onChange={(e) => onFiles(e.target.files?.[0] ?? null)}
           />
