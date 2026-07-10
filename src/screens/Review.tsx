@@ -195,10 +195,19 @@ export function Review() {
       return;
     }
     setMissing([]);
-    const record = { ...recordFromDraft(draft, form, { id: recordId, finishedAt: Date.now() }), section889 };
-    await addRecord(record, draft.imageBlob);
-    setDraft(null);
-    navigate("/records");
+    setSaveError(null);
+    setSaving(true);
+    try {
+      const record = { ...recordFromDraft(draft, form, { id: recordId, finishedAt: Date.now() }), section889 };
+      await addRecord(record, draft.imageBlob);
+      setDraft(null);
+      navigate("/records");
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -217,6 +226,12 @@ export function Review() {
           <div>
             Fill the required US Bank fields before saving: {missing.join(", ")}.
           </div>
+        </div>
+      )}
+
+      {saveError && (
+        <div className="alert alert-error">
+          <div>Could not save the record: {saveError}</div>
         </div>
       )}
 
@@ -410,7 +425,9 @@ export function Review() {
 
       {/* Discard is destructive — push it well clear of Save so it can't be hit by mistake. */}
       <div className="row wrap">
-        <button className="btn btn-primary btn-lg" onClick={save}>Save record</button>
+        <button className="btn btn-primary btn-lg" onClick={save} disabled={saving}>
+          {saving ? "Saving…" : "Save record"}
+        </button>
         <div className="spacer" />
         <Link to="/scan" className="btn btn-ghost btn-lg">Discard</Link>
       </div>
