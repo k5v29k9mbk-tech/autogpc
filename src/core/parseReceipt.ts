@@ -306,6 +306,22 @@ function pickVendor(lines: string[]): string | null {
   return null;
 }
 
+// Footer banner: "THANK YOU FOR SHOPPING [AT|WITH] <VENDOR>" names the vendor
+// outright. Decisive when the storefront header is a stylized logo OCR can't
+// read (e.g. the Exchange "X" logo) and the top printed lines are only the
+// location and cashier. Stop-words reject the no-name variants ("with us!").
+const FOOTER_VENDOR =
+  /thank(?:s|\s*you)?\s*for\s*shopping\s*(?:at|with)?\s*[:!,-]?\s*([A-Za-z][A-Za-z0-9&'. -]{2,40})/i;
+const FOOTER_STOP = /^(?:us|with|at|our|the|here|today|again)\b/i;
+
+function parseFooterVendor(text: string): string | null {
+  const m = text.match(FOOTER_VENDOR);
+  if (!m) return null;
+  const name = m[1].replace(/[.,;:!\s]+$/, "").trim();
+  if (name.length < 3 || FOOTER_STOP.test(name)) return null;
+  return name.slice(0, 60);
+}
+
 export function parseVendor(text: string): string | null {
   const lines = cleanLines(text);
   // Storefront headers sit immediately above the contact block (phone / web /
@@ -314,11 +330,14 @@ export function parseVendor(text: string): string | null {
   // plausible line on the page" is unreliable — when a contact block exists,
   // search the few lines just above it instead.
   const anchor = lines.findIndex((l) => CONTACT_LINE.test(l));
-  if (anchor > 0) {
-    const fromAnchor = pickVendor(lines.slice(Math.max(0, anchor - 4), anchor));
-    if (fromAnchor) return fromAnchor;
-  }
-  return pickVendor(lines.slice(0, 8));
+  const header =
+    (anchor > 0 ? pickVendor(lines.slice(Math.max(0, anchor - 4), anchor)) : null) ??
+    pickVendor(lines.slice(0, 8));
+  // An ALL-CAPS banner is the printed storefront name — trust it. Anything
+  // weaker (mixed-case location/cashier lines) loses to a footer that names
+  // the vendor explicitly.
+  if (header && vendorTier(header) === 1) return header;
+  return parseFooterVendor(text) ?? header;
 }
 
 // Conservative line-item heuristic. Better to under-extract than to invent

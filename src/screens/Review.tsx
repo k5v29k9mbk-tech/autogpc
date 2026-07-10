@@ -57,8 +57,10 @@ export function Review() {
     const f = draft?.fields ?? {};
     return {
       vendor: f.vendor ?? "",
-      // Normalize the extractor's date (any format) to ISO for the date picker.
-      transactionDate: toISODate(f.transactionDate),
+      // Normalize the extractor's date (any format) to ISO for the date picker;
+      // fall back to today when the receipt had no parseable date. Editable after.
+      // en-CA renders local time as YYYY-MM-DD (not UTC like toISOString).
+      transactionDate: toISODate(f.transactionDate) || new Date().toLocaleDateString("en-CA"),
       totalAmount: f.totalAmount ?? "",
       // Auto-grab the currency: use what the extractor read, else default to USD
       // (the GPC default) rather than leaving the reviewer on "— select —".

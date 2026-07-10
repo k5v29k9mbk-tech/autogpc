@@ -77,7 +77,7 @@ describe("routeExtraction", () => {
     const r = await routeExtraction(pdfInput);
 
     expect(r.source).toBe("tesseract");
-    expect(renderThumb).toHaveBeenCalledWith(pdfInput.blob, 2);
+    expect(renderThumb).toHaveBeenCalledWith(pdfInput.blob, 4);
     expect(tessExtract).toHaveBeenCalledWith(
       { blob: raster, mimeType: "image/png", fileName: "r.pdf" },
       undefined,

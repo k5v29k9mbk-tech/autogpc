@@ -60,9 +60,11 @@ export async function routeExtraction(
         throw new Error("This PDF is password-protected. Remove the password and try again.");
       }
       // No text layer = a scan saved as PDF. Rasterize and OCR it like a photo.
+      // Scale 4 (~300dpi on letter) — measurably better OCR than the preview's
+      // scale 2 on real thermal-receipt scans.
       // ponytail: page 1 only — receipts are single-page; loop pages if
       // multi-page scanned invoices show up.
-      const raster = await renderPdfThumbnail(input.blob, 2).catch(() => null);
+      const raster = await renderPdfThumbnail(input.blob, 4).catch(() => null);
       if (!raster) {
         throw new Error(
           "Couldn't read this PDF — it may be corrupted. Try re-exporting it or uploading a photo of the document instead.",

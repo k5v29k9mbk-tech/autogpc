@@ -122,6 +122,31 @@ describe("parseVendor", () => {
   it("still accepts an all-lowercase vendor when nothing capitalized exists", () => {
     expect(parseVendor("toom baumarkt\n123 Main St")).toBe("toom baumarkt");
   });
+  it("recovers the vendor from the thank-you footer when the header logo is unreadable", () => {
+    // Real Tesseract output from a scanned Exchange receipt: the stylized
+    // "EXCHANGE" logo never OCRs, so the top lines are only mall + cashier —
+    // but the printed footer names the vendor.
+    const raw = [
+      "x",
+      "Ranstain KHCC Hall", // "Ramstein KMCC Mall" through thermal noise
+      "Brian A Saith",
+      "PHONE: 4490363714079 x403",
+      "1000 - 2000, Sum",
+      "UM. SHOPHYEXCHANGE CON",
+      "TOTAL 1 370.62",
+      "ITEMS 22",
+      "THANK YOU FOR SHOPPING EXCHANGE",
+    ].join("\n");
+    expect(parseVendor(raw)).toBe("EXCHANGE");
+  });
+  it("keeps an ALL-CAPS header banner over the footer", () => {
+    const raw = ["EXCHANGE", "Ramstein KMCC Mall", "PHONE: 06371-4079300", "THANK YOU FOR SHOPPING AT SOMEWHERE ELSE"].join("\n");
+    expect(parseVendor(raw)).toBe("EXCHANGE");
+  });
+  it("ignores no-name thank-you footers", () => {
+    const raw = ["United Office Solutions", "PHONE: 555-1212", "Thank you for shopping with us!"].join("\n");
+    expect(parseVendor(raw)).toBe("United Office Solutions");
+  });
 });
 
 describe("parseReceipt — full documents", () => {
