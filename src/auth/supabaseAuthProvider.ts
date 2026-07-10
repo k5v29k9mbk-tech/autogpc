@@ -198,12 +198,16 @@ export const supabaseAuthProvider: AuthProvider = {
   async updateProfile(profile: SignUpProfile): Promise<AuthUser> {
     const firstName = profile.firstName.trim();
     const lastName = profile.lastName.trim();
+    // Only touch the duty station when the caller supplies one (updateUser
+    // merges, so omitting it preserves the existing value).
+    const station = profile.dutyStation ? findDutyStation(profile.dutyStation) : undefined;
     const { data, error } = await getSupabaseClient().auth.updateUser({
       // Mirror the metadata shape signUp writes so toAuthUser reads it back.
       data: {
         first_name: firstName,
         last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),
+        ...(station && { duty_station: station.id, duty_station_oconus: station.oconus }),
       },
     });
     if (error) throw mapError(error, "Could not update your profile.");

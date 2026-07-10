@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, AuthError } from "../auth";
 import type { AuthUser } from "../auth/types";
@@ -10,6 +10,7 @@ import {
   validatePasswordConfirm,
 } from "../lib/validation";
 import { IconCheck, IconLogOut, IconMail, IconShield, IconUser } from "../components/icons";
+import { DUTY_STATIONS } from "../lib/dutyStations";
 
 /**
  * Best-effort first/last name for pre-filling the profile inputs. Uses the
@@ -46,10 +47,24 @@ export function Account() {
   // splitting fullName, then the email's local part — so the inputs arrive
   // pre-filled instead of blank.
   const [seedFirst, seedLast] = deriveName(user);
+  const seedStation = user?.dutyStation ?? "";
   const firstNameId = useId();
   const lastNameId = useId();
+  const dutyStationId = useId();
   const [firstName, setFirstName] = useState(seedFirst);
   const [lastName, setLastName] = useState(seedLast);
+  const [dutyStation, setDutyStation] = useState(seedStation);
+
+  // Country-grouped stations for the <optgroup>s (same shape as signup).
+  const stationGroups = useMemo(() => {
+    const groups: { country: string; stations: typeof DUTY_STATIONS }[] = [];
+    for (const s of DUTY_STATIONS) {
+      const last = groups[groups.length - 1];
+      if (last && last.country === s.country) last.stations.push(s);
+      else groups.push({ country: s.country, stations: [s] });
+    }
+    return groups;
+  }, []);
   const [profileState, setProfileState] = useState<"idle" | "saving" | "saved">("idle");
   const [profileErrors, setProfileErrors] = useState<{ firstName?: string; lastName?: string; form?: string }>(
     {},
@@ -76,7 +91,8 @@ export function Account() {
     navigate("/login", { replace: true });
   };
 
-  const profileDirty = firstName.trim() !== seedFirst || lastName.trim() !== seedLast;
+  const profileDirty =
+    firstName.trim() !== seedFirst || lastName.trim() !== seedLast || dutyStation !== seedStation;
 
   const saveProfile = async () => {
     const firstErr = validateName(firstName, "First name");
@@ -88,7 +104,7 @@ export function Account() {
     setProfileErrors({});
     setProfileState("saving");
     try {
-      await updateProfile({ firstName, lastName });
+      await updateProfile({ firstName, lastName, dutyStation: dutyStation || undefined });
       setProfileState("saved");
     } catch (err) {
       setProfileState("idle");
@@ -214,6 +230,31 @@ export function Account() {
               <FieldError id={`${lastNameId}-err`}>{profileErrors.lastName}</FieldError>
             )}
           </div>
+        </div>
+        <div className="field">
+          <label htmlFor={dutyStationId}>Duty station</label>
+          <select
+            id={dutyStationId}
+            className="select"
+            value={dutyStation}
+            onChange={(e) => {
+              setDutyStation(e.target.value);
+              setProfileState("idle");
+            }}
+            aria-describedby={`${dutyStationId}-hint`}
+          >
+            <option value="">— select your base —</option>
+            {stationGroups.map((g) => (
+              <optgroup key={g.country} label={g.country}>
+                {g.stations.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <span className="pw-hint" id={`${dutyStationId}-hint`}>
+            Sets whether your orders deliver outside the US (OCONUS).
+          </span>
         </div>
         <div className="row" style={{ gap: "var(--s3)", alignItems: "center" }}>
           <button
