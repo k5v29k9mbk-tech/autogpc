@@ -23,6 +23,7 @@ import {
   type ProgressCallback,
 } from "./extractionService";
 import { renderPdfThumbnail } from "../../lib/pdfThumbnail";
+import { detectKnownVendor } from "../knownVendors";
 import type { LineItem, PurchaseRecord } from "../types";
 
 /** Shape the /api/extract function returns (source is attached client-side). */
@@ -142,6 +143,11 @@ export const cloudExtractionService: ExtractionService = {
     const base = resultFromText(cloud.rawText, "cloud", cloud.confidence);
     if (cloud.rawTextSource !== "document") base.fields.vendor = "";
     const fields = { ...base.fields, ...nonEmpty(cloud.fields) };
+    // Known vendors override whatever Textract labeled VENDOR_NAME — see
+    // core/knownVendors.ts (e.g. Exchange receipts, where the storefront banner
+    // is a logo and Textract tends to label the mall or cashier as the vendor).
+    const known = detectKnownVendor(cloud.rawText);
+    if (known) fields.vendor = known.name;
     const lineItems = cloud.lineItems?.length ? cloud.lineItems : base.lineItems;
 
     return {

@@ -22,6 +22,7 @@ import { confidenceBucket, toISODate } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
 import { MandatoryAuthCard } from "../components/MandatoryAuthCard";
 import { suggestSpecialPreApproval } from "../core/mandatoryAuth";
+import { detectKnownVendor } from "../core/knownVendors";
 import { IconEye, IconTrash } from "../components/icons";
 import {
   DESIGNATION_889_OPTIONS,
@@ -75,15 +76,20 @@ export function Review() {
       notes: f.notes ?? "",
       requestorName: cardholderName,
       emergencyTypeOperation: DEFAULT_ETO,
-      designation889: "",
-      // Required US Bank dropdowns — left blank so the reviewer must consciously
-      // pick each one (they can't be inferred from a receipt). Special
-      // Pre-Approval is the exception: seed it from the detected categories.
-      specialPreApproval: suggestSpecialPreApproval(draft?.mandatoryAuth?.categories ?? []),
-      delegatedProcurementAuthority: "",
-      prePurchaseApprovals: "",
-      section508Consideration: "",
-      requestToPurchaseReceived: "",
+      // Intragovernmental vendors (e.g. AAFES Exchange) always classify as
+      // "889 Government" — seed it; the reviewer can still override.
+      designation889: detectKnownVendor(draft?.rawText ?? "")?.designation889 ?? "",
+      // Required US Bank dropdowns — seed each to its standard GPC option (the
+      // first, most-common choice) so the reviewer confirms rather than picks
+      // from blank. Special Pre-Approval instead seeds from detected categories.
+      // Spend Analysis stays blank: it's item-dependent and can't be defaulted.
+      specialPreApproval:
+        suggestSpecialPreApproval(draft?.mandatoryAuth?.categories ?? []) ||
+        SPECIAL_PRE_APPROVAL_OPTIONS[0],
+      delegatedProcurementAuthority: DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS[0],
+      prePurchaseApprovals: PREPURCHASE_APPROVALS_OPTIONS[0],
+      section508Consideration: SECTION_508_OPTIONS[0],
+      requestToPurchaseReceived: REQUEST_TO_PURCHASE_OPTIONS[0],
       spendAnalysis: "",
       requiredSourceScreened: "",
       // Seed from the cardholder's duty station: CONUS → "No", OCONUS → APO/FPO.

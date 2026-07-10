@@ -8,6 +8,7 @@
 // a blank one in an audit context.
 
 import type { LineItem } from "./types";
+import { detectKnownVendor } from "./knownVendors";
 
 export type ParsedReceipt = {
   vendor: string | null;
@@ -323,6 +324,11 @@ function parseFooterVendor(text: string): string | null {
 }
 
 export function parseVendor(text: string): string | null {
+  // Known vendors first — deterministic markers (domain, footer, banner) beat
+  // every heuristic. See core/knownVendors.ts for why (unreadable logo banners).
+  const known = detectKnownVendor(text);
+  if (known) return known.name;
+
   const lines = cleanLines(text);
   // Storefront headers sit immediately above the contact block (phone / web /
   // email). Scanned thermal receipts often carry MANY lines of mirrored
