@@ -106,6 +106,9 @@ export function Review() {
 
   // Required-field validation surfaced on a failed save attempt.
   const [missing, setMissing] = useState<string[]>([]);
+  // Storage/network failures on save — otherwise the button silently does nothing.
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // SAM.gov 889 determination confirmed during review; attached to the record on save.
   const [section889, setSection889] = useState<Saved889 | null>(null);
