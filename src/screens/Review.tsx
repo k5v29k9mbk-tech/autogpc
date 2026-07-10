@@ -8,6 +8,7 @@ import {
   DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS,
   ETO_OPTIONS,
   FINAL_DELIVERY_OUTSIDE_US_OPTIONS,
+  finalDeliveryDefault,
   GPC_CURRENCIES,
   PREPURCHASE_APPROVALS_OPTIONS,
   REQUEST_TO_PURCHASE_OPTIONS,
@@ -85,7 +86,9 @@ export function Review() {
       requestToPurchaseReceived: "",
       spendAnalysis: "",
       requiredSourceScreened: "",
-      finalDeliveryOutsideUs: "",
+      // Seed from the cardholder's duty station: CONUS → "No", OCONUS → APO/FPO.
+      // Reviewer still confirms (or overrides) before save.
+      finalDeliveryOutsideUs: finalDeliveryDefault(user?.dutyStationOconus),
       lineItemTax: "0.00",
       status: "needs_review",
       docType: draft?.docType ?? "receipt",

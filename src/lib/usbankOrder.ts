@@ -174,6 +174,18 @@ export const FINAL_DELIVERY_OUTSIDE_US_OPTIONS = [
   ...TXN_EXCEPTIONS,
 ] as const;
 
+/**
+ * Seed the "Final Delivery Outside US?" dropdown from the cardholder's duty
+ * station OCONUS flag (see lib/dutyStations). CONUS → "No"; OCONUS → APO/FPO
+ * (the standard overseas military delivery channel); unknown → blank so the
+ * reviewer picks. Only a default — the reviewer confirms or overrides on save.
+ */
+export function finalDeliveryDefault(oconus: boolean | null | undefined): string {
+  if (oconus === true) return "Yes-Via Postal Service to APO/FPO";
+  if (oconus === false) return "No";
+  return "";
+}
+
 function toNumber(s: string | null | undefined): number | null {
   if (s == null) return null;
   const cleaned = String(s).replace(/[^0-9.\-]/g, "");

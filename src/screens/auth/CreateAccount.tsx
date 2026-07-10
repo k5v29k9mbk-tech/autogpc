@@ -9,6 +9,7 @@ import {
   validatePasswordConfirm,
 } from "../../lib/validation";
 import { IconMail } from "../../components/icons";
+import { DUTY_STATIONS } from "../../lib/dutyStations";
 import {
   AuthShell,
   Banner,
@@ -23,6 +24,7 @@ export function CreateAccount() {
   const navigate = useNavigate();
   const firstNameId = useId();
   const lastNameId = useId();
+  const dutyStationId = useId();
   const emailId = useId();
   const pwId = useId();
   const confirmId = useId();
@@ -45,16 +47,29 @@ export function CreateAccount() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [dutyStation, setDutyStation] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<{
     firstName?: string;
     lastName?: string;
+    dutyStation?: string;
     email?: string;
     password?: string;
     confirm?: string;
   }>({});
+
+  // Group stations by country for the <optgroup>s, preserving array order.
+  const stationGroups = useMemo(() => {
+    const groups: { country: string; stations: typeof DUTY_STATIONS }[] = [];
+    for (const s of DUTY_STATIONS) {
+      const last = groups[groups.length - 1];
+      if (last && last.country === s.country) last.stations.push(s);
+      else groups.push({ country: s.country, stations: [s] });
+    }
+    return groups;
+  }, []);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Clickwrap consent: unchecked by default, gates every account-creation path.
@@ -80,13 +95,15 @@ export function CreateAccount() {
 
     const firstNameErr = validateName(firstName, "First name");
     const lastNameErr = validateName(lastName, "Last name");
+    const dutyStationErr = dutyStation ? null : "Please select your duty station.";
     const emailErr = validateEmail(email);
     const pwErr = validatePassword(password);
     const confirmErr = validatePasswordConfirm(password, confirm);
-    if (firstNameErr || lastNameErr || emailErr || pwErr || confirmErr) {
+    if (firstNameErr || lastNameErr || dutyStationErr || emailErr || pwErr || confirmErr) {
       setErrors({
         firstName: firstNameErr ?? undefined,
         lastName: lastNameErr ?? undefined,
+        dutyStation: dutyStationErr ?? undefined,
         email: emailErr ?? undefined,
         password: pwErr ?? undefined,
         confirm: confirmErr ?? undefined,
@@ -100,6 +117,7 @@ export function CreateAccount() {
       const result = await signUp(email.trim(), password, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        dutyStation,
       });
       if (result.needsEmailConfirmation) {
         setPendingEmail(email.trim());
@@ -224,6 +242,36 @@ export function CreateAccount() {
             />
             {errors.lastName && <FieldError id={`${lastNameId}-err`}>{errors.lastName}</FieldError>}
           </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor={dutyStationId}>Duty station</label>
+          <select
+            id={dutyStationId}
+            className={`select${errors.dutyStation ? " invalid" : ""}`}
+            value={dutyStation}
+            onChange={(e) => setDutyStation(e.target.value)}
+            aria-invalid={errors.dutyStation ? true : undefined}
+            aria-describedby={
+              errors.dutyStation ? `${dutyStationId}-err` : `${dutyStationId}-hint`
+            }
+          >
+            <option value="">— select your base —</option>
+            {stationGroups.map((g) => (
+              <optgroup key={g.country} label={g.country}>
+                {g.stations.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {errors.dutyStation ? (
+            <FieldError id={`${dutyStationId}-err`}>{errors.dutyStation}</FieldError>
+          ) : (
+            <span className="pw-hint" id={`${dutyStationId}-hint`}>
+              Sets whether your orders deliver outside the US (OCONUS).
+            </span>
+          )}
         </div>
 
         <div className="field">

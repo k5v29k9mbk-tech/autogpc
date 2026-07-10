@@ -1338,7 +1338,8 @@ details.collapsible[open] summary::before {
 }
 
 .input.invalid,
-.textarea.invalid {
+.textarea.invalid,
+.select.invalid {
   border-color: var(--danger);
 }
 

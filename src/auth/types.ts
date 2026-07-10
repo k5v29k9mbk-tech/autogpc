@@ -29,6 +29,17 @@ export interface AuthUser {
    * decide whether the gate must be shown.
    */
   termsAcceptedVersion: string | null;
+  /**
+   * The cardholder's home duty station id (see lib/dutyStations), collected at
+   * signup. null for OAuth/guest/legacy accounts that never set one.
+   */
+  dutyStation: string | null;
+  /**
+   * Whether that duty station's final delivery is outside the US (OCONUS).
+   * Seeds the US Bank "Final Delivery Outside US?" order field. null when the
+   * station is unknown.
+   */
+  dutyStationOconus: boolean | null;
 }
 
 /**
@@ -83,6 +94,9 @@ export interface SignUpResult {
 export interface SignUpProfile {
   firstName: string;
   lastName: string;
+  /** Home duty station id (lib/dutyStations). Optional so updateProfile,
+   * which only edits the name, need not resupply it. */
+  dutyStation?: string;
 }
 
 export type OAuthProvider = "google" | "apple";

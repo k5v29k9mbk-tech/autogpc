@@ -7,6 +7,7 @@
 import type { Session, User, AuthError as SupabaseError } from "@supabase/supabase-js";
 import { getSupabaseClient } from "./supabaseClient";
 import { TERMS_VERSION } from "../lib/terms";
+import { findDutyStation } from "../lib/dutyStations";
 import {
   AuthError,
   type AuthProvider,
@@ -48,6 +49,8 @@ function toAuthUser(user: User | null): AuthUser | null {
     lastName,
     fullName,
     termsAcceptedVersion: metaString(meta.terms_version),
+    dutyStation: metaString(meta.duty_station),
+    dutyStationOconus: typeof meta.duty_station_oconus === "boolean" ? meta.duty_station_oconus : null,
   };
 }
 
@@ -119,6 +122,9 @@ export const supabaseAuthProvider: AuthProvider = {
   async signUp(email: string, password: string, profile: SignUpProfile): Promise<SignUpResult> {
     const firstName = profile.firstName.trim();
     const lastName = profile.lastName.trim();
+    // Resolve the duty station to its OCONUS flag now, so Review can seed the
+    // "Final Delivery Outside US?" field straight off the user metadata.
+    const station = findDutyStation(profile.dutyStation);
     const { data, error } = await getSupabaseClient().auth.signUp({
       email,
       password,
@@ -130,6 +136,8 @@ export const supabaseAuthProvider: AuthProvider = {
           first_name: firstName,
           last_name: lastName,
           full_name: `${firstName} ${lastName}`.trim(),
+          duty_station: station?.id ?? null,
+          duty_station_oconus: station?.oconus ?? null,
           // Auditable clickwrap record. The signup form (CreateAccount) gates on
           // an explicit, unchecked-by-default consent box, so reaching signUp
           // means the user accepted; we record which version and when.
