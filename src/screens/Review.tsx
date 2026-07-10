@@ -203,7 +203,11 @@ export function Review() {
       setDraft(null);
       navigate("/records");
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : String(e));
+      // Supabase rejects with a plain PostgrestError/StorageError object, not an
+      // Error — read `message` off whatever shape arrives before stringifying.
+      console.error("Save failed", e);
+      const msg = (e as { message?: string })?.message;
+      setSaveError(msg || JSON.stringify(e));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSaving(false);
