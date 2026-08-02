@@ -16,7 +16,9 @@ import {
   type AnalyzeExpenseCommandOutput,
   type ExpenseDocument,
 } from "@aws-sdk/client-textract";
-import { selectVendor } from "./textractPostProcessor";
+import { clean, ocrLines, selectVendor } from "./textractPostProcessor";
+import { ADJUSTMENT_ROW } from "../src/core/vendorRules";
+import { normalizeAmount } from "../src/core/parseReceipt";
 
 // Vercel runs functions on AWS Lambda, which RESERVES the env names AWS_REGION,
 // AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY for its own runtime — setting
@@ -39,13 +41,14 @@ type LineItem = {
   total: string | null;
 };
 
-function clean(s?: string): string {
-  return (s ?? "").replace(/\s+/g, " ").trim();
-}
-
-/** Strip currency symbols/spaces but keep digits, separators, and sign. */
+/**
+ * Normalize a monetary string to a plain "1234.56" form. Delegates to the
+ * client parser's normalizeAmount so BOTH engines emit the same number format —
+ * a Textract TOTAL of "1.234,56" used to pass through EU-grouped while the
+ * regex path emitted "1234.56", splitting record.totalAmount by engine.
+ */
 function amount(s?: string): string {
-  return clean(s).replace(/[^0-9.,-]/g, "");
+  return normalizeAmount(clean(s)) ?? "";
 }
 
 // Prefer the document's real OCR lines (ExpenseDocument.Blocks) so rawText
@@ -54,16 +57,11 @@ function amount(s?: string): string {
 // missing do we fall back to a synthetic "TYPE: value" summary list, flagged
 // via `source` so the client skips position-based heuristics on it.
 function buildRawText(doc?: ExpenseDocument): { text: string; source: "document" | "summary" } {
-  // Confidence floor: scanned thermal receipts often carry mirrored bleed-
-  // through from the back of the paper, which OCRs as gibberish lines ABOVE
-  // the real header and then poisons position-based parsing (e.g. vendor =
-  // top line). Genuine print scores high-90s; bleed-through usually lower —
-  // but it can reach the 80s, so this floor is one layer, not the whole
-  // defense (parseVendor anchors on the contact block client-side).
-  const ocrLines = (doc?.Blocks ?? [])
-    .filter((b) => b.BlockType === "LINE" && b.Text && (b.Confidence ?? 100) >= 85)
-    .map((b) => clean(b.Text));
-  if (ocrLines.length) return { text: ocrLines.join("\n"), source: "document" };
+  // The confidence floor (see ocrLines) is one bleed-through layer, not the
+  // whole defense — it can reach the 80s, so parseVendor also anchors on the
+  // contact block client-side.
+  const docLines = ocrLines(doc).map((l) => l.text);
+  if (docLines.length) return { text: docLines.join("\n"), source: "document" };
 
   const lines: string[] = [];
   for (const f of doc?.SummaryFields ?? []) {
@@ -131,11 +129,6 @@ export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
     }
   }
   if (currency) fields.currency = currency;
-
-  // Adjustment rows Textract reports as "items" but aren't purchases —
-  // discounts, refund-value notes, surcharges, savings summaries.
-  const ADJUSTMENT_ROW =
-    /\b(trans\.?\s*disc\w*|discount|refund|unit\s*charge|total\s*savings)\b/i;
 
   const lineItems: LineItem[] = [];
   for (const g of doc?.LineItemGroups ?? []) {

@@ -18,7 +18,7 @@ import {
 import { useAuth } from "./auth";
 import { webStorage } from "./storage/webStorage";
 import { supabaseStore } from "./storage/supabaseStore";
-import type { RecordStore } from "./core/storage";
+import { attachmentKey, type RecordStore } from "./core/storage";
 import type { ReviewDraft } from "./core/draft";
 import type { PurchaseRecord } from "./core/types";
 
@@ -63,8 +63,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const storeRef = useRef(store);
   storeRef.current = store;
 
+  // Never let a failed refetch reject the mutation that triggered it — the
+  // save/delete already succeeded, and surfacing this as "Could not save" is a
+  // false negative on the user's data. The list just goes stale until the next
+  // successful refresh.
   const refresh = useCallback(async () => {
-    setRecords(await storeRef.current.listRecords());
+    try {
+      setRecords(await storeRef.current.listRecords());
+    } catch (err) {
+      console.warn("[store] could not refresh records:", err);
+    }
   }, []);
 
   // (Re)load whenever auth settles or the active user changes.
@@ -120,7 +128,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const putAttachment = useCallback(async (recordId: string, file: File) => {
     const id = newId();
-    const uri = await storeRef.current.putImage(`${recordId}/${id}`, file);
+    const uri = await storeRef.current.putImage(attachmentKey(recordId, id), file);
     return { id, uri, filename: file.name, contentType: file.type || "application/octet-stream" };
   }, []);
 

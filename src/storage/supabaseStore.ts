@@ -6,7 +6,8 @@
 // client — see supabase/migrations/0001_records.sql.
 
 import { getSupabaseClient } from "../auth/supabaseClient";
-import type { RecordStore } from "../core/storage";
+import { isDisplayableUri, type RecordStore } from "../core/storage";
+import { emptyChecklist } from "../core/types";
 import type {
   Attachment,
   DocType,
@@ -25,6 +26,17 @@ const BUCKET = "receipts";
 /** image_uri values stored in the Storage bucket carry this prefix. */
 const STORAGE_URI_PREFIX = "receipt-store:";
 const SIGNED_URL_TTL = 60 * 60; // 1 hour
+
+/**
+ * The contract (core/storage.ts) says failures are Errors with readable
+ * messages — Supabase rejects with plain PostgrestError/StorageError objects,
+ * which fail `instanceof Error` checks in every caller. Wrap once, here.
+ */
+function asError(e: unknown, fallback: string): Error {
+  if (e instanceof Error) return e;
+  const msg = (e as { message?: string })?.message;
+  return new Error(msg || fallback);
+}
 
 /** Snake_case row shape as it lives in Postgres. */
 type Row = {
@@ -56,8 +68,9 @@ type Row = {
   updated_at: string;
 };
 
-/** PurchaseRecord -> row. user_id is omitted: it defaults to auth.uid() on insert. */
-function toRow(r: PurchaseRecord): Row {
+/** PurchaseRecord -> row. user_id is omitted: it defaults to auth.uid() on insert.
+ *  Exported (with fromRow) so the pure mapping half is unit-testable. */
+export function toRow(r: PurchaseRecord): Row {
   return {
     id: r.id,
     vendor: r.vendor,
@@ -88,7 +101,7 @@ function toRow(r: PurchaseRecord): Row {
   };
 }
 
-function fromRow(row: Row): PurchaseRecord {
+export function fromRow(row: Row): PurchaseRecord {
   return {
     id: row.id,
     vendor: row.vendor,
@@ -111,7 +124,9 @@ function fromRow(row: Row): PurchaseRecord {
     rawOcrText: row.raw_ocr_text,
     imageUri: row.image_uri,
     status: row.status,
-    documentChecklist: row.document_checklist,
+    // The column's SQL default is '{}' (0001_records.sql), which satisfies the
+    // type only after this merge — otherwise every flag reads undefined.
+    documentChecklist: { ...emptyChecklist(), ...(row.document_checklist ?? {}) },
     source: row.source,
     docType: row.doc_type,
     createdAt: row.created_at,
@@ -126,19 +141,26 @@ async function currentUserId(): Promise<string> {
   return id;
 }
 
+// Signed URLs cost a network round-trip each, so every <img> mount used to
+// re-fetch one. Cache them for most of their lifetime; refresh before expiry.
+// ponytail: unbounded Map — fine for one user's records; add eviction if a
+// session ever holds thousands of images.
+const signedUrlCache = new Map<string, { url: string; expiresAt: number }>();
+const SIGNED_URL_REUSE_MS = (SIGNED_URL_TTL - 10 * 60) * 1000; // reuse for 50 min
+
 export const supabaseStore: RecordStore = {
   async listRecords() {
     const { data, error } = await getSupabaseClient()
       .from(TABLE)
       .select("*")
       .order("created_at", { ascending: false });
-    if (error) throw error;
+    if (error) throw asError(error, "Could not load records.");
     return ((data ?? []) as Row[]).map(fromRow);
   },
 
   async saveRecord(record) {
     const { error } = await getSupabaseClient().from(TABLE).upsert(toRow(record));
-    if (error) throw error;
+    if (error) throw asError(error, "Could not save the record.");
   },
 
   async deleteRecord(id) {
@@ -156,7 +178,7 @@ export const supabaseStore: RecordStore = {
       /* images may not exist; ignore */
     }
     const { error } = await client.from(TABLE).delete().eq("id", id);
-    if (error) throw error;
+    if (error) throw asError(error, "Could not delete the record.");
   },
 
   async putImage(key, blob) {
@@ -165,7 +187,7 @@ export const supabaseStore: RecordStore = {
     const { error } = await getSupabaseClient()
       .storage.from(BUCKET)
       .upload(path, blob, { upsert: true, contentType: blob.type || "image/jpeg" });
-    if (error) throw error;
+    if (error) throw asError(error, "Could not upload the file.");
     return STORAGE_URI_PREFIX + path;
   },
 
@@ -181,12 +203,20 @@ export const supabaseStore: RecordStore = {
 
   async resolveImageSrc(imageUri) {
     if (!imageUri) return null;
-    if (!imageUri.startsWith(STORAGE_URI_PREFIX)) return imageUri; // data: / http(s):
+    if (!imageUri.startsWith(STORAGE_URI_PREFIX)) {
+      // data:/blob:/http(s): pass through; a foreign store's URI (e.g. a local
+      // guest record's "blob-store:" key) is unresolvable here — null, not a
+      // broken <img src>.
+      return isDisplayableUri(imageUri) ? imageUri : null;
+    }
+    const cached = signedUrlCache.get(imageUri);
+    if (cached && cached.expiresAt > Date.now()) return cached.url;
     const path = imageUri.slice(STORAGE_URI_PREFIX.length);
     const { data, error } = await getSupabaseClient()
       .storage.from(BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL);
     if (error) return null;
+    signedUrlCache.set(imageUri, { url: data.signedUrl, expiresAt: Date.now() + SIGNED_URL_REUSE_MS });
     return data.signedUrl;
   },
 };

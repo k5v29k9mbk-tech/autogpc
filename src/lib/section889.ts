@@ -45,6 +45,24 @@ export type RawEntity = {
 // The clean domain types live in core/types so a saved determination can be
 // part of the platform-agnostic record. Re-exported here for existing importers.
 export type { Section889Compliance, Section889Entity, Saved889 } from "../core/types";
+
+/** Path of the SmartPay entity search, relative to the SmartPay base URL. */
+export const SAM_889_ENTITIES_PATH = "/api/entity-information/v3/entities";
+
+/**
+ * The SmartPay 889 entity-search query — ONE owner for its four decisions
+ * (search term capped at 100 chars per SmartPay, which sections to include,
+ * active registrations only). Imported by BOTH transports — the dev direct
+ * call (section889Client) and the prod serverless proxy (api/889-search) —
+ * which used to each build it and could silently diverge.
+ */
+export function build889Query(vendor: string): URLSearchParams {
+  return new URLSearchParams({
+    samToolsSearch: vendor.slice(0, 100),
+    includeSections: "samToolsData,entityRegistration,coreData",
+    registrationStatus: "A",
+  });
+}
 import type { Section889Entity } from "../core/types";
 
 /** ISO "2026-01-02" -> "01-02-2026" (the format the SmartPay PDF prints). */

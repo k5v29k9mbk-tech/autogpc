@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStore } from "../store";
-import { DocTypeTag, SourceTag } from "../components/ui";
-import { IconChevronRight, IconReceipt, IconSearch } from "../components/icons";
-import { formatAmount, formatDateUS } from "../lib/format";
+import { RecordRow } from "../components/ui";
+import { IconSearch } from "../components/icons";
+import { formatDateUS } from "../lib/format";
 import { STATUS_LABELS, STATUS_ORDER, type RecordStatus } from "../core/types";
 
 type Filter = "all" | RecordStatus;
@@ -75,25 +75,7 @@ export function Records() {
       ) : (
         <div className="rec-list">
           {filtered.map((r) => (
-            <Link key={r.id} to={`/records/${r.id}`} className="rec-row">
-              <span className="rec-ico">
-                <IconReceipt width={18} height={18} />
-              </span>
-              <div>
-                <div className="rec-vendor">{r.vendor || "Untitled record"}</div>
-                <div className="rec-date">{r.transactionDate ? formatDateUS(r.transactionDate) : "no date"}</div>
-                <div className="rec-meta">
-                  <DocTypeTag docType={r.docType} />
-                  <SourceTag source={r.source} />
-                </div>
-              </div>
-              <span className={`statusline status-${r.status}`}>
-                <span className="dot" />
-                {STATUS_LABELS[r.status]}
-              </span>
-              <div className="rec-amt">{formatAmount(r.totalAmount, r.currency)}</div>
-              <IconChevronRight width={18} height={18} className="rec-chev" />
-            </Link>
+            <RecordRow key={r.id} record={r} showMeta />
           ))}
         </div>
       )}

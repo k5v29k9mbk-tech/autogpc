@@ -15,7 +15,7 @@ import {
   SPECIAL_PRE_APPROVAL_OPTIONS,
   SPEND_ANALYSIS_OPTIONS,
 } from "../lib/usbankOrder";
-import { Field } from "../components/ui";
+import { Field, SelectField } from "../components/ui";
 import { confidenceBucket } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
 import { MandatoryAuthCard } from "../components/MandatoryAuthCard";
@@ -23,6 +23,7 @@ import { IconEye, IconTrash } from "../components/icons";
 import {
   DESIGNATION_889_OPTIONS,
   DOC_TYPE_LABELS,
+  DOC_TYPE_ORDER,
   STATUS_LABELS,
   STATUS_ORDER,
   type DocType,
@@ -34,7 +35,6 @@ import {
 type Form = RecordEdits;
 
 const CURRENCIES = ["", ...GPC_CURRENCIES];
-const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as DocType[];
 
 export function Review() {
   const { draft, setDraft, addRecord, deleteAttachment } = useStore();
@@ -88,8 +88,8 @@ export function Review() {
       lineItems: prev.lineItems.map((li, idx) => (idx === i ? { ...li, ...patch } : li)),
     }));
 
-  // The new US Bank required dropdowns all render the same way: a labelled
-  // select seeded blank, valid once picked.
+  // The required US Bank dropdowns all render the same way (ui.tsx SelectField);
+  // this just binds one to its form key.
   type UsBankSelectKey =
     | "specialPreApproval"
     | "delegatedProcurementAuthority"
@@ -99,15 +99,8 @@ export function Review() {
     | "spendAnalysis"
     | "requiredSourceScreened"
     | "finalDeliveryOutsideUs";
-  const selectField = (key: UsBankSelectKey, label: string, options: readonly string[]) => (
-    <Field label={`${label} *`} valid={!!form[key].trim()}>
-      <select className="select" value={form[key]} onChange={(e) => set(key, e.target.value)}>
-        <option value="">— select —</option>
-        {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
-    </Field>
+  const usBankSelect = (key: UsBankSelectKey, label: string, options: readonly string[]) => (
+    <SelectField label={label} required value={form[key]} onChange={(v) => set(key, v)} options={options} />
   );
 
   const save = async () => {
@@ -213,23 +206,18 @@ export function Review() {
           <Field label="Order date *" valid={!!form.transactionDate.trim()}>
             <input type="date" className="input" value={form.transactionDate} onChange={(e) => set("transactionDate", e.target.value)} />
           </Field>
-          {selectField("specialPreApproval", "Special Pre-Approval Obtained", SPECIAL_PRE_APPROVAL_OPTIONS)}
-          {selectField("delegatedProcurementAuthority", "Delegated Procurement Authority Used", DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS)}
-          {selectField("prePurchaseApprovals", "A/BO and/or RM/FM Pre-Purch Approvals Obtained", PREPURCHASE_APPROVALS_OPTIONS)}
-          {selectField("section508Consideration", "Items Subject to Section 508 Consideration?", SECTION_508_OPTIONS)}
-          {selectField("requestToPurchaseReceived", "Request to Purchase Received", REQUEST_TO_PURCHASE_OPTIONS)}
-          {selectField("spendAnalysis", "Spend Analysis", SPEND_ANALYSIS_OPTIONS)}
-          <Field label="Emergency-Type Operation (OM) *">
-            <select
-              className="select"
-              value={form.emergencyTypeOperation}
-              onChange={(e) => set("emergencyTypeOperation", e.target.value)}
-            >
-              {ETO_OPTIONS.map((o) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-          </Field>
+          {usBankSelect("specialPreApproval", "Special Pre-Approval Obtained", SPECIAL_PRE_APPROVAL_OPTIONS)}
+          {usBankSelect("delegatedProcurementAuthority", "Delegated Procurement Authority Used", DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS)}
+          {usBankSelect("prePurchaseApprovals", "A/BO and/or RM/FM Pre-Purch Approvals Obtained", PREPURCHASE_APPROVALS_OPTIONS)}
+          {usBankSelect("section508Consideration", "Items Subject to Section 508 Consideration?", SECTION_508_OPTIONS)}
+          {usBankSelect("requestToPurchaseReceived", "Request to Purchase Received", REQUEST_TO_PURCHASE_OPTIONS)}
+          {usBankSelect("spendAnalysis", "Spend Analysis", SPEND_ANALYSIS_OPTIONS)}
+          <SelectField
+            label="Emergency-Type Operation (OM) *"
+            value={form.emergencyTypeOperation}
+            onChange={(v) => set("emergencyTypeOperation", v)}
+            options={ETO_OPTIONS}
+          />
 
           {/* Financials */}
           <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Financials</div>
@@ -255,36 +243,33 @@ export function Review() {
           <Field label="Merchant name *" valid={!!form.vendor.trim()}>
             <input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} />
           </Field>
-          {selectField("requiredSourceScreened", "Required Source Screened", REQUIRED_SOURCE_SCREENED_OPTIONS)}
-          <Field label="889 Designation (OM) *" valid={!!form.designation889.trim()}>
-            <select className="select" value={form.designation889} onChange={(e) => set("designation889", e.target.value)}>
-              <option value="">— select —</option>
-              {DESIGNATION_889_OPTIONS.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </Field>
+          {usBankSelect("requiredSourceScreened", "Required Source Screened", REQUIRED_SOURCE_SCREENED_OPTIONS)}
+          <SelectField
+            label="889 Designation (OM)"
+            required
+            value={form.designation889}
+            onChange={(v) => set("designation889", v)}
+            options={DESIGNATION_889_OPTIONS}
+          />
 
           {/* Ship to */}
           <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Shipping</div>
-          {selectField("finalDeliveryOutsideUs", "Final Delivery Location Outside United States?", FINAL_DELIVERY_OUTSIDE_US_OPTIONS)}
+          {usBankSelect("finalDeliveryOutsideUs", "Final Delivery Location Outside United States?", FINAL_DELIVERY_OUTSIDE_US_OPTIONS)}
 
           {/* Filing */}
           <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Filing</div>
-          <Field label="Document type">
-            <select className="select" value={form.docType} onChange={(e) => set("docType", e.target.value as DocType)}>
-              {DOC_TYPES.map((d) => (
-                <option key={d} value={d}>{DOC_TYPE_LABELS[d]}</option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Status">
-            <select className="select" value={form.status} onChange={(e) => set("status", e.target.value as RecordStatus)}>
-              {STATUS_ORDER.map((s) => (
-                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-              ))}
-            </select>
-          </Field>
+          <SelectField
+            label="Document type"
+            value={form.docType}
+            onChange={(v) => set("docType", v as DocType)}
+            options={DOC_TYPE_ORDER.map((d) => ({ value: d, label: DOC_TYPE_LABELS[d] }))}
+          />
+          <SelectField
+            label="Status"
+            value={form.status}
+            onChange={(v) => set("status", v as RecordStatus)}
+            options={STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABELS[s] }))}
+          />
         </div>
 
         {/* SAM.gov 889 representation lookup — confirm the vendor's FAR

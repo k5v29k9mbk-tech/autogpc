@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useStore } from "../store";
+import { useAuth } from "../auth";
 import { RecordImage } from "../components/RecordImage";
-import { DocTypeTag, Field, SourceTag, StatusBadge } from "../components/ui";
+import { DocTypeTag, Field, SelectField, SourceTag, StatusBadge } from "../components/ui";
 import { IconArrowLeft, IconCheck, IconCopy, IconDownload, IconTrash } from "../components/icons";
 import { formatAmount, formatDateUS, orDash, toISODate } from "../lib/format";
 import { documentsMissing, documentsPresent, toJson, toStructuredText } from "../lib/exportRecord";
 import { USBANK_ENABLED, UsBankOrderCard } from "../components/UsBankOrderCard";
 import { Section889Field } from "../components/Section889Field";
 import { MandatoryAuthCard } from "../components/MandatoryAuthCard";
+import { GPC_CURRENCIES } from "../lib/usbankOrder";
 import {
+  CHECKLIST_LABELS,
   DOC_TYPE_LABELS,
+  DOC_TYPE_ORDER,
   STATUS_LABELS,
   STATUS_ORDER,
   emptyMandatoryAuth,
@@ -20,20 +24,13 @@ import {
   type RecordStatus,
 } from "../core/types";
 
-const CURRENCIES = ["", "USD", "EUR", "GBP"];
-const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as DocType[];
-const CHECKLIST_ITEMS: { key: keyof DocumentChecklist; label: string }[] = [
-  { key: "receiptUploaded", label: "Receipt" },
-  { key: "invoiceUploaded", label: "Invoice" },
-  { key: "quoteUploaded", label: "Quote" },
-  { key: "approvalDocUploaded", label: "Approval doc" },
-  { key: "otherDocsUploaded", label: "Other" },
-];
+const CHECKLIST_KEYS = Object.keys(CHECKLIST_LABELS) as (keyof DocumentChecklist)[];
 
 export function RecordDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { ready, getRecord, updateRecord, deleteRecord } = useStore();
+  const { mode } = useAuth();
   const record = getRecord(id);
 
   const [editing, setEditing] = useState(false);
@@ -152,24 +149,28 @@ export function RecordDetail() {
               <Field label="Vendor"><input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} /></Field>
               <Field label="Transaction date"><input type="date" className="input" value={toISODate(form.transactionDate)} onChange={(e) => set("transactionDate", e.target.value)} /></Field>
               <Field label="Total"><input className="input mono" value={form.totalAmount} onChange={(e) => set("totalAmount", e.target.value)} /></Field>
-              <Field label="Currency">
-                <select className="select" value={form.currency} onChange={(e) => set("currency", e.target.value)}>
-                  {CURRENCIES.map((c) => <option key={c} value={c}>{c || "— select —"}</option>)}
-                </select>
-              </Field>
+              <SelectField
+                label="Currency"
+                required
+                value={form.currency}
+                onChange={(v) => set("currency", v)}
+                options={GPC_CURRENCIES}
+              />
               <Field label="Card last 4"><input className="input mono" value={form.cardLast4 ?? ""} maxLength={4} onChange={(e) => set("cardLast4", e.target.value || null)} /></Field>
               <Field label="Receipt number"><input className="input mono" value={form.receiptNumber ?? ""} onChange={(e) => set("receiptNumber", e.target.value || null)} /></Field>
               <Field label="Invoice number"><input className="input mono" value={form.invoiceNumber ?? ""} onChange={(e) => set("invoiceNumber", e.target.value || null)} /></Field>
-              <Field label="Document type">
-                <select className="select" value={form.docType} onChange={(e) => set("docType", e.target.value as DocType)}>
-                  {DOC_TYPES.map((d) => <option key={d} value={d}>{DOC_TYPE_LABELS[d]}</option>)}
-                </select>
-              </Field>
-              <Field label="Status">
-                <select className="select" value={form.status} onChange={(e) => set("status", e.target.value as RecordStatus)}>
-                  {STATUS_ORDER.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                </select>
-              </Field>
+              <SelectField
+                label="Document type"
+                value={form.docType}
+                onChange={(v) => set("docType", v as DocType)}
+                options={DOC_TYPE_ORDER.map((d) => ({ value: d, label: DOC_TYPE_LABELS[d] }))}
+              />
+              <SelectField
+                label="Status"
+                value={form.status}
+                onChange={(v) => set("status", v as RecordStatus)}
+                options={STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABELS[s] }))}
+              />
             </div>
           ) : (
             <dl className="kv">
@@ -228,20 +229,20 @@ export function RecordDetail() {
       <div className="card">
         <div className="card-title">Document checklist</div>
         <div className="row wrap" style={{ gap: "var(--s3)" }}>
-          {CHECKLIST_ITEMS.map((item) => {
-            const checked = (editing ? form : record).documentChecklist[item.key];
+          {CHECKLIST_KEYS.map((key) => {
+            const checked = (editing ? form : record).documentChecklist[key];
             return (
               <button
-                key={item.key}
+                key={key}
                 className="badge"
                 style={{ cursor: editing ? "pointer" : "default", color: checked ? "var(--accent-text)" : "var(--text-muted)", borderColor: checked ? "#3a4a3c" : "var(--border)", background: checked ? "var(--accent-soft)" : "var(--surface-2)" }}
                 onClick={() => {
                   if (!editing) return;
-                  set("documentChecklist", { ...form.documentChecklist, [item.key]: !checked });
+                  set("documentChecklist", { ...form.documentChecklist, [key]: !checked });
                 }}
               >
                 {checked && <IconCheck width={12} height={12} />}
-                {item.label}
+                {CHECKLIST_LABELS[key]}
               </button>
             );
           })}
@@ -278,9 +279,9 @@ export function RecordDetail() {
         </div>
       </div>
 
-      {/* 889 representation — SAM.gov lookup. When US Bank is enabled the same
-          lookup lives inside the order card, so only stand alone otherwise. */}
-      {!USBANK_ENABLED && (
+      {/* 889 representation — SAM.gov lookup. When the US Bank card renders,
+          the same lookup lives inside it, so only stand alone otherwise. */}
+      {!(USBANK_ENABLED && mode === "authenticated") && (
         <div className="card">
           <div className="card-title">889 representation</div>
           <Section889Field
@@ -302,8 +303,21 @@ export function RecordDetail() {
         onAttachmentsChange={(attachments) => updateRecord({ ...record, attachments })}
       />
 
-      {/* US Bank order handoff */}
-      {USBANK_ENABLED && <UsBankOrderCard record={record} />}
+      {/* US Bank order handoff — needs a signed-in session (the proxy exchanges
+          the Supabase token), so a guest gets the explanation, not a card whose
+          submit can only fail. */}
+      {USBANK_ENABLED &&
+        (mode === "authenticated" ? (
+          <UsBankOrderCard record={record} />
+        ) : (
+          <div className="card">
+            <div className="card-title">Send to US Bank order</div>
+            <p className="muted" style={{ fontSize: 14, margin: 0 }}>
+              <Link to="/login" style={{ color: "var(--text)" }}>Sign in</Link> to create, match,
+              and attach this order in US Bank — guest mode has no account to act on.
+            </p>
+          </div>
+        ))}
 
       {/* Export / summary */}
       <div className="card">

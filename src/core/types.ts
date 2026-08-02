@@ -188,6 +188,18 @@ export const DOC_TYPE_LABELS: Record<DocType, string> = {
   other: "Other",
 };
 
+/** DocTypes in display order (Review and RecordDetail render the same menu). */
+export const DOC_TYPE_ORDER: DocType[] = ["receipt", "invoice", "quote", "vat_form", "other"];
+
+/** Display labels for the document checklist — one owner (UI + export share it). */
+export const CHECKLIST_LABELS: Record<keyof DocumentChecklist, string> = {
+  receiptUploaded: "Receipt",
+  invoiceUploaded: "Invoice",
+  quoteUploaded: "Quote",
+  approvalDocUploaded: "Approval doc",
+  otherDocsUploaded: "Other",
+};
+
 export const SOURCE_LABELS: Record<ExtractionSource, string> = {
   pdf_text: "PDF text layer",
   tesseract: "On-device OCR",

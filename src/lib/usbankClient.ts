@@ -15,6 +15,8 @@ export type CreatedOrder = {
   /** The statement line the order was auto-matched to, if matching ran. */
   matched: { merchant: string; amount: number; transDate: string } | null;
   documentsUploaded: number;
+  /** Steps that failed AFTER the order was created (match / document upload). */
+  warnings: string[];
 };
 
 export async function submitUsBankOrder(
@@ -26,18 +28,24 @@ export async function submitUsBankOrder(
   }
   const res = await fetch("/api/usbank-order", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // Bearer token travels as a header, never in the JSON body — request
+      // bodies get logged by middleware and error reporters; auth headers are
+      // routinely redacted.
+      Authorization: `Bearer ${opts.accessToken}`,
+    },
     body: JSON.stringify({
       ...payload,
       documents: opts.documents ?? [],
       autoMatch: opts.autoMatch ?? true,
-      accessToken: opts.accessToken,
     }),
   });
   const body = (await res.json().catch(() => ({}))) as {
     order?: { controlNumber?: string; merchantName?: string; amount?: number };
     matched?: { merchant?: string; amount?: number; transDate?: string } | null;
     documentsUploaded?: number;
+    warnings?: string[];
     message?: string;
   };
   if (!res.ok) {
@@ -58,5 +66,6 @@ export async function submitUsBankOrder(
         }
       : null,
     documentsUploaded: body.documentsUploaded ?? 0,
+    warnings: body.warnings ?? [],
   };
 }

@@ -1,10 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore } from "../store";
 import { routeExtraction } from "../core/extraction/extractionRouter";
 import { draftFromResult } from "../core/draft";
 import { isPdf as isPdfInput, type ExtractionProgress } from "../core/extraction/extractionService";
 import { renderPdfThumbnail } from "../lib/pdfThumbnail";
+import { takePendingFile } from "../lib/pendingFile";
 import { IconFile, IconImage, IconUpload } from "../components/icons";
 
 // ponytail: intentionally generic — these labels must not name the engine or
@@ -69,6 +70,11 @@ export function Scan() {
       if (seq === pickSeq.current) setThumbing(false);
     }
   }, []);
+
+  // A file dropped on the Home hero lands here already picked.
+  useEffect(() => {
+    onFiles(takePendingFile());
+  }, [onFiles]);
 
   const extract = useCallback(async () => {
     if (!file) return;

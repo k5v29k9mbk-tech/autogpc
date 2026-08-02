@@ -9,6 +9,7 @@
 
 import type { LineItem } from "./types";
 import { detectKnownVendor } from "./knownVendors";
+import { ADJUSTMENT_ROW } from "./vendorRules";
 
 export type ParsedReceipt = {
   vendor: string | null;
@@ -366,8 +367,8 @@ export function parseLineItems(text: string): LineItem[] {
     if (/\b(sub)?total|tax|vat|mwst|balance|amount\s*due|summe|gesamt|change|tender|cash|card/i.test(line)) {
       continue;
     }
-    // Adjustment rows, not purchases: discounts, refund-value notes, surcharges.
-    if (/\b(trans\.?\s*disc\w*|discount|refund|unit\s*charge|savings)\b/i.test(line)) {
+    // Adjustment rows, not purchases (shared with the Textract mapper).
+    if (ADJUSTMENT_ROW.test(line)) {
       continue;
     }
     const q = line.match(qtyRow);

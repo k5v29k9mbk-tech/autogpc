@@ -2,21 +2,14 @@
 // entry, and a JSON object. No automated submission anywhere.
 
 import {
+  CHECKLIST_LABELS,
   DOC_TYPE_LABELS,
   STATUS_LABELS,
   type DocumentChecklist,
   type PurchaseRecord,
 } from "../core/types";
-import { authCategory, requiredDocuments } from "../core/mandatoryAuth";
+import { authCategory, missingRequiredDocs } from "../core/mandatoryAuth";
 import { formatAmount, orDash } from "./format";
-
-const CHECKLIST_LABELS: Record<keyof DocumentChecklist, string> = {
-  receiptUploaded: "Receipt",
-  invoiceUploaded: "Invoice",
-  quoteUploaded: "Quote",
-  approvalDocUploaded: "Approval doc",
-  otherDocsUploaded: "Other",
-};
 
 export function documentsPresent(checklist: DocumentChecklist): string[] {
   return (Object.keys(CHECKLIST_LABELS) as (keyof DocumentChecklist)[])
@@ -74,13 +67,7 @@ export function toStructuredText(record: PurchaseRecord): string {
       const cat = authCategory(id);
       if (cat) lines.push(`  - ${cat.label}: ${cat.requiredDoc} (${cat.authority})`);
     }
-    const attached = new Set((record.attachments ?? []).map((a) => a.slotId));
-    const reqMissing = requiredDocuments(ma.categories, {
-      germanVendor: ma.germanVendor,
-      delivered: ma.delivered,
-    })
-      .filter((d) => !attached.has(d.id) && !(d.id === "receipt" && record.imageUri))
-      .map((d) => d.label);
+    const reqMissing = missingRequiredDocs(record);
     lines.push(pair("Docs still missing:", reqMissing.length ? reqMissing.join(", ") : "none"));
   }
 
@@ -93,7 +80,7 @@ export function toStructuredText(record: PurchaseRecord): string {
 }
 
 /** JSON-friendly object. Omits the bulky image data URI. */
-export function toExportObject(record: PurchaseRecord) {
+function toExportObject(record: PurchaseRecord) {
   const { imageUri: _imageUri, ...rest } = record;
   return { ...rest, image: "[stored locally on device]" };
 }

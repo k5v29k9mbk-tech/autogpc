@@ -1,20 +1,20 @@
-import { useId, useMemo, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, AuthError } from "../../auth";
 import {
-  passwordStrength,
   validateEmail,
   validateName,
   validatePassword,
   validatePasswordConfirm,
 } from "../../lib/validation";
 import { IconMail } from "../../components/icons";
-import { DUTY_STATIONS } from "../../lib/dutyStations";
 import {
   AuthShell,
   Banner,
   ConsentCheckbox,
+  DutyStationField,
   FieldError,
+  NewPasswordField,
   PasswordInput,
   ProviderSeams,
 } from "./authShared";
@@ -60,16 +60,6 @@ export function CreateAccount() {
     confirm?: string;
   }>({});
 
-  // Group stations by country for the <optgroup>s, preserving array order.
-  const stationGroups = useMemo(() => {
-    const groups: { country: string; stations: typeof DUTY_STATIONS }[] = [];
-    for (const s of DUTY_STATIONS) {
-      const last = groups[groups.length - 1];
-      if (last && last.country === s.country) last.stations.push(s);
-      else groups.push({ country: s.country, stations: [s] });
-    }
-    return groups;
-  }, []);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // Clickwrap consent: unchecked by default, gates every account-creation path.
@@ -80,8 +70,6 @@ export function CreateAccount() {
   // "check your email" panel. Signup is NOT treated as a login: no session yet.
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
-
-  const strength = useMemo(() => passwordStrength(password), [password]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -244,35 +232,12 @@ export function CreateAccount() {
           </div>
         </div>
 
-        <div className="field">
-          <label htmlFor={dutyStationId}>Duty station</label>
-          <select
-            id={dutyStationId}
-            className={`select${errors.dutyStation ? " invalid" : ""}`}
-            value={dutyStation}
-            onChange={(e) => setDutyStation(e.target.value)}
-            aria-invalid={errors.dutyStation ? true : undefined}
-            aria-describedby={
-              errors.dutyStation ? `${dutyStationId}-err` : `${dutyStationId}-hint`
-            }
-          >
-            <option value="">— select your base —</option>
-            {stationGroups.map((g) => (
-              <optgroup key={g.country} label={g.country}>
-                {g.stations.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          {errors.dutyStation ? (
-            <FieldError id={`${dutyStationId}-err`}>{errors.dutyStation}</FieldError>
-          ) : (
-            <span className="pw-hint" id={`${dutyStationId}-hint`}>
-              Sets whether your orders deliver outside the US (OCONUS).
-            </span>
-          )}
-        </div>
+        <DutyStationField
+          id={dutyStationId}
+          value={dutyStation}
+          onChange={setDutyStation}
+          error={errors.dutyStation}
+        />
 
         <div className="field">
           <label htmlFor={emailId}>Email</label>
@@ -289,36 +254,13 @@ export function CreateAccount() {
           {errors.email && <FieldError id={`${emailId}-err`}>{errors.email}</FieldError>}
         </div>
 
-        <div className="field">
-          <label htmlFor={pwId}>Password</label>
-          <PasswordInput
-            id={pwId}
-            value={password}
-            onChange={setPassword}
-            invalid={!!errors.password}
-            autoComplete="new-password"
-            describedBy={`${pwId}-hint${errors.password ? ` ${pwId}-err` : ""}`}
-          />
-          {password && (
-            <div
-              className="pw-meter"
-              data-strength={strength}
-              role="img"
-              aria-label={`Password strength: ${strength}`}
-            >
-              <span />
-              <span />
-              <span />
-            </div>
-          )}
-          {errors.password ? (
-            <FieldError id={`${pwId}-err`}>{errors.password}</FieldError>
-          ) : (
-            <span className="pw-hint" id={`${pwId}-hint`}>
-              At least 8 characters, with a letter and a number.
-            </span>
-          )}
-        </div>
+        <NewPasswordField
+          id={pwId}
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          error={errors.password}
+        />
 
         <div className="field">
           <label htmlFor={confirmId}>Confirm password</label>

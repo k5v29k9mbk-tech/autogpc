@@ -10,7 +10,7 @@
 // path — tune keywords / add entries here; swap in a classifier only if misses
 // become a real cost.
 
-import type { DocCategory, LineItem } from "./types";
+import { emptyMandatoryAuth, type DocCategory, type LineItem, type PurchaseRecord } from "./types";
 
 /** Which US Bank "Special Pre-Approval Obtained" value this item maps to. */
 type SpecialPreApproval = "Yes-IT" | "Yes-Hazardous Material" | "Yes-Other-Identify in Comments Fields";
@@ -381,4 +381,23 @@ export function requiredDocuments(
     });
   }
   return docs;
+}
+
+/**
+ * Labels of required documents a record does NOT yet carry: not attached to a
+ * slot, and the receipt slot counts as satisfied by the primary image. The one
+ * owner of this reminder computation (the export summary and the US Bank card
+ * used to each keep a copy).
+ */
+export function missingRequiredDocs(
+  record: Pick<PurchaseRecord, "mandatoryAuth" | "attachments" | "imageUri">,
+): string[] {
+  const ma = record.mandatoryAuth ?? emptyMandatoryAuth();
+  const attached = new Set((record.attachments ?? []).map((a) => a.slotId));
+  return requiredDocuments(ma.categories, {
+    germanVendor: ma.germanVendor,
+    delivered: ma.delivered,
+  })
+    .filter((d) => !attached.has(d.id) && !(d.id === "receipt" && record.imageUri))
+    .map((d) => d.label);
 }

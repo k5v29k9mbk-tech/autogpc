@@ -11,6 +11,7 @@
 // UEI/CAGE, registration status, and FAR 52.204-26 representations. No GPC PII.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { build889Query, SAM_889_ENTITIES_PATH } from "../src/lib/section889";
 
 const SAM_TOOL_BASE =
   process.env.SAM_889_BASE ?? "https://889.smartpay.gsa.gov";
@@ -27,13 +28,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  // SmartPay caps the search term at 100 chars; mirror that so we never get a 400.
-  const params = new URLSearchParams({
-    samToolsSearch: q.slice(0, 100),
-    includeSections: "samToolsData,entityRegistration,coreData",
-    registrationStatus: "A",
-  });
-  const url = `${SAM_TOOL_BASE}/api/entity-information/v3/entities?${params.toString()}`;
+  // Query contract (term cap, sections, active-only) lives in lib/section889 —
+  // shared with the dev direct-call path so the two can't drift.
+  const url = `${SAM_TOOL_BASE}${SAM_889_ENTITIES_PATH}?${build889Query(q).toString()}`;
 
   try {
     const upstream = await fetch(url, { headers: { Accept: "application/json" } });

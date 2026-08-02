@@ -8,18 +8,18 @@
 //   - prod (vercel):  call our own /api/889-search proxy (their CORS does NOT
 //                     allow the deployed origin).
 
-import { summarizeEntities, type Section889Entity, type RawEntity } from "./section889";
+import {
+  build889Query,
+  SAM_889_ENTITIES_PATH,
+  summarizeEntities,
+  type Section889Entity,
+  type RawEntity,
+} from "./section889";
 
-const SMARTPAY_DIRECT =
-  "https://889.smartpay.gsa.gov/api/entity-information/v3/entities";
+const SMARTPAY_BASE = "https://889.smartpay.gsa.gov";
 
 function devUrl(vendor: string): string {
-  const params = new URLSearchParams({
-    samToolsSearch: vendor.slice(0, 100),
-    includeSections: "samToolsData,entityRegistration,coreData",
-    registrationStatus: "A",
-  });
-  return `${SMARTPAY_DIRECT}?${params.toString()}`;
+  return `${SMARTPAY_BASE}${SAM_889_ENTITIES_PATH}?${build889Query(vendor).toString()}`;
 }
 
 export async function search889(vendor: string): Promise<Section889Entity[]> {

@@ -36,10 +36,13 @@ export type ExtractionResult = {
   rawText: string;
   lineItems: LineItem[];
   source: ExtractionSource;
+  /**
+   * 0..1, bucketed for display (lib/format confidenceBucket). Semantics by
+   * engine: pdf_text = 1 (exact text layer), tesseract = OCR character
+   * confidence, cloud = mean of Textract field confidences + the vendor
+   * post-processor score.
+   */
   confidence?: number;
-  /** Per-field confidence 0..1, where the engine exposes it (cloud does). Lets
-   *  the review UI flag low-trust auto-fills instead of treating all as equal. */
-  fieldConfidence?: Record<string, number>;
 };
 
 export interface ExtractionService {

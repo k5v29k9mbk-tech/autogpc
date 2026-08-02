@@ -10,11 +10,11 @@ import { useMemo, useState } from "react";
 import { toUsBankOrder } from "../lib/usbankOrder";
 import { submitUsBankOrder, type CreatedOrder } from "../lib/usbankClient";
 import { buildUsBankDocuments } from "../lib/usbankDocuments";
-import { requiredDocuments } from "../core/mandatoryAuth";
+import { missingRequiredDocs } from "../core/mandatoryAuth";
 import { formatAmount } from "../lib/format";
-import { useAuth } from "../auth";
+import { displayName, useAuth } from "../auth";
 import { useStore } from "../store";
-import { emptyMandatoryAuth, type PurchaseRecord } from "../core/types";
+import type { PurchaseRecord } from "../core/types";
 import { Section889Field } from "./Section889Field";
 import { IconAlert, IconCheck } from "./icons";
 
@@ -28,11 +28,7 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   // Requestor defaults to the signed-in cardholder's name; the reviewer can
   // override. `null` means "untouched" so the default keeps tracking the user
   // until they type something.
-  const cardholderName = useMemo(
-    () =>
-      (user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ") ?? "").trim(),
-    [user],
-  );
+  const cardholderName = displayName(user);
   // Seed from what the reviewer saved on the record; fall back to sensible
   // defaults. Still editable here as a last-minute override before submit.
   const [requestorEdit, setRequestorEdit] = useState<string | null>(null);
@@ -59,14 +55,7 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   // Supporting documents the record should carry (GPC purchase request, VAT,
   // memo, approvals) that aren't attached yet. A reminder only — never blocks
   // the order, since the cardholder may attach them in US Bank themselves.
-  const ma = record.mandatoryAuth ?? emptyMandatoryAuth();
-  const attachedSlots = new Set((record.attachments ?? []).map((a) => a.slotId));
-  const missingDocs = requiredDocuments(ma.categories, {
-    germanVendor: ma.germanVendor,
-    delivered: ma.delivered,
-  })
-    .filter((d) => !attachedSlots.has(d.id) && !(d.id === "receipt" && record.imageUri))
-    .map((d) => d.label);
+  const missingDocs = missingRequiredDocs(record);
 
   const submit = async () => {
     setSubmitting(true);
@@ -115,6 +104,19 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
               </ul>
             </div>
           </div>
+          {result.warnings.length > 0 && (
+            <div className="alert">
+              <IconAlert width={16} height={16} />
+              <div>
+                <strong>Needs a manual follow-up:</strong>
+                <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em" }}>
+                  {result.warnings.map((w, i) => (
+                    <li key={i} style={{ fontSize: 13 }}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
           {APP_URL && (
             <a
               className="btn btn-sm btn-ghost"

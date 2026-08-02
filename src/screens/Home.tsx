@@ -1,39 +1,56 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useStore } from "../store";
 import { HeroLogo } from "../components/HeroLogo";
-import { formatAmount } from "../lib/format";
-import { STATUS_LABELS } from "../core/types";
-import { IconChevronRight, IconReceipt, IconShield, IconUpload } from "../components/icons";
+import { RecordRow } from "../components/ui";
+import { setPendingFile } from "../lib/pendingFile";
+import { IconReceipt, IconShield, IconUpload } from "../components/icons";
 
 export function Home() {
   const { records } = useStore();
   const navigate = useNavigate();
   const recent = records.slice(0, 3);
+  const [dragging, setDragging] = useState(false);
+
+  // The front door does the work: a file dropped here goes straight into the
+  // scan flow, no marketing detour.
+  const take = (f: File | null | undefined) => {
+    if (!f) return;
+    setPendingFile(f);
+    navigate("/scan");
+  };
 
   return (
     <div className="stack" style={{ gap: "var(--s6)" }}>
-      {/* Hero */}
+      {/* Hero — the upload surface itself, not a pitch for it. */}
       <section className="hero reveal">
-        <div>
-          <div className="hero-eyebrow">Automation, anytime, anywhere</div>
-          <h1 className="hero-title">
-            Upload once,
-            <br />
-            we do the rest.
-          </h1>
-          <p className="hero-sub">
-            We read the receipt, extract the key fields, and build an audit-ready record for GPC
-            entry in seconds.
-          </p>
-          <div className="hero-cta">
-            <button className="btn btn-primary btn-lg cta" onClick={() => navigate("/scan")}>
-              <IconUpload /> Upload receipt
-            </button>
-            <Link to="/records" className="btn btn-lg cta">
-              View my records
-            </Link>
-          </div>
-        </div>
+        {/* A <label> gives click-to-browse and keyboard access for free, so the
+            drop surface needs no click handler and no ref. */}
+        <label
+          className={`hero-drop ${dragging ? "drag" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            take(e.dataTransfer.files?.[0]);
+          }}
+        >
+          <span className="hero-drop-ico">
+            <IconUpload width={22} height={22} />
+          </span>
+          <h1 className="hero-drop-title">Drop a receipt</h1>
+          <span className="hero-drop-hint">or click to browse — JPG, PNG, PDF</span>
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            className="sr-only"
+            onChange={(e) => take(e.target.files?.[0])}
+          />
+        </label>
         <div className="hero-visual" aria-hidden="true">
           <HeroLogo />
         </div>
@@ -52,21 +69,7 @@ export function Home() {
         {recent.length > 0 ? (
           <div className="rec-list">
             {recent.map((r) => (
-              <Link key={r.id} to={`/records/${r.id}`} className="rec-row">
-                <span className="rec-ico">
-                  <IconReceipt width={18} height={18} />
-                </span>
-                <div>
-                  <div className="rec-vendor">{r.vendor || "Untitled record"}</div>
-                  <div className="rec-date">{r.transactionDate || "no date"}</div>
-                </div>
-                <span className={`statusline status-${r.status}`}>
-                  <span className="dot" />
-                  {STATUS_LABELS[r.status]}
-                </span>
-                <div className="rec-amt">{formatAmount(r.totalAmount, r.currency)}</div>
-                <IconChevronRight width={18} height={18} className="rec-chev" />
-              </Link>
+              <RecordRow key={r.id} record={r} />
             ))}
           </div>
         ) : (

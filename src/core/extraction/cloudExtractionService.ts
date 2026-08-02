@@ -1,19 +1,17 @@
-// cloudExtractionService — client adapter for the cloud OCR path.
+// cloudExtractionService — client TRANSPORT adapter for the cloud OCR path.
 //
 // It holds NO credentials. It compresses the document, POSTs it to the
 // serverless function at /api/extract (which carries the AWS key and calls
-// Textract AnalyzeExpense), and maps the JSON back into an ExtractionResult.
+// Textract AnalyzeExpense), and hands the JSON to mergeCloudExtraction — the
+// merge policy itself is a pure function in resultFromText.ts, not here.
 // The UI keeps calling extract() through the same ExtractionService seam and is
 // none the wiser about which engine ran.
-//
-// Cloud fields win; the regex parser (parseReceipt, via resultFromText) fills
-// any gaps — so a partial cloud response still produces a complete draft.
 //
 // NOTE: compressForUpload uses the canvas, so this adapter is web-specific (like
 // preprocessImage). A future iOS shell would supply its own implementation
 // behind this same interface.
 
-import { resultFromText } from "./resultFromText";
+import { mergeCloudExtraction, type CloudPayload } from "./resultFromText";
 import {
   isImage,
   isPdf,
@@ -23,20 +21,6 @@ import {
   type ProgressCallback,
 } from "./extractionService";
 import { renderPdfThumbnail } from "../../lib/pdfThumbnail";
-import { detectKnownVendor } from "../knownVendors";
-import type { LineItem, PurchaseRecord } from "../types";
-
-/** Shape the /api/extract function returns (source is attached client-side). */
-type CloudResponse = {
-  fields: Partial<PurchaseRecord>;
-  rawText: string;
-  /** "document" = real OCR lines in reading order; "summary" = synthetic "TYPE: value" list. */
-  rawTextSource?: "document" | "summary";
-  lineItems: LineItem[];
-  confidence?: number;
-  /** Per-field confidence 0..1 from the post-processor. */
-  fieldConfidence?: Record<string, number>;
-};
 
 async function blobToBase64(blob: Blob): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
@@ -74,17 +58,6 @@ async function compressForUpload(blob: Blob, maxEdge = 2000, quality = 0.82): Pr
   } catch {
     return blob;
   }
-}
-
-/** Keep only fields that carry information, so they override regex gaps but blanks don't. */
-function nonEmpty(fields: Partial<PurchaseRecord>): Partial<PurchaseRecord> {
-  const out: Partial<PurchaseRecord> = {};
-  for (const [key, value] of Object.entries(fields)) {
-    if (value !== null && value !== "" && value !== undefined) {
-      (out as Record<string, unknown>)[key] = value;
-    }
-  }
-  return out;
 }
 
 export const cloudExtractionService: ExtractionService = {
@@ -129,33 +102,10 @@ export const cloudExtractionService: ExtractionService = {
       const detail = await res.text().catch(() => "");
       throw new Error(`cloud: /api/extract failed (${res.status}) ${detail}`.trim());
     }
-    const cloud = (await res.json()) as CloudResponse;
+    const cloud = (await res.json()) as CloudPayload;
 
     onProgress?.({ stage: "parsing", progress: 1 });
 
-    // parseReceipt as a fallback: cloud-detected fields win, regex fills gaps.
-    // Exception: the vendor heuristic assumes the storefront name is the top
-    // printed line, which only holds when rawText is the document's real OCR
-    // lines. On the synthetic "TYPE: value" summary fallback the first line is
-    // arbitrary (e.g. "AMOUNT_PAID: 555.65") — leave vendor blank for review
-    // rather than filling it with a wrong guess.
-    const base = resultFromText(cloud.rawText, "cloud", cloud.confidence);
-    if (cloud.rawTextSource !== "document") base.fields.vendor = "";
-    const fields = { ...base.fields, ...nonEmpty(cloud.fields) };
-    // Known vendors override whatever Textract labeled VENDOR_NAME — see
-    // core/knownVendors.ts (e.g. Exchange receipts, where the storefront banner
-    // is a logo and Textract tends to label the mall or cashier as the vendor).
-    const known = detectKnownVendor(cloud.rawText);
-    if (known) fields.vendor = known.name;
-    const lineItems = cloud.lineItems?.length ? cloud.lineItems : base.lineItems;
-
-    return {
-      fields,
-      rawText: cloud.rawText,
-      lineItems,
-      source: "cloud",
-      confidence: cloud.confidence,
-      fieldConfidence: cloud.fieldConfidence,
-    };
+    return mergeCloudExtraction(cloud);
   },
 };

@@ -6,6 +6,8 @@
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import type { SignInMethod } from "../../auth/lastSignIn";
+import { DUTY_STATIONS } from "../../lib/dutyStations";
+import { MIN_PASSWORD_LENGTH, passwordStrength } from "../../lib/validation";
 import { Logo } from "../../components/Logo";
 import {
   IconAlert,
@@ -125,6 +127,117 @@ export function ConsentCheckbox({
  */
 export function LastUsedTag() {
   return <span className="tag last-used">Last used</span>;
+}
+
+// Stations grouped by country for the <optgroup>s, preserving array order.
+// Static data — computed once here, not useMemo'd per screen.
+const STATION_GROUPS = DUTY_STATIONS.reduce<{ country: string; stations: typeof DUTY_STATIONS }[]>(
+  (groups, s) => {
+    const last = groups[groups.length - 1];
+    if (last && last.country === s.country) last.stations.push(s);
+    else groups.push({ country: s.country, stations: [s] });
+    return groups;
+  },
+  [],
+);
+
+/**
+ * The duty-station picker (signup and Account previously each hand-rolled it,
+ * hint string and all). Sets the OCONUS delivery default for US Bank orders.
+ */
+export function DutyStationField({
+  id,
+  value,
+  onChange,
+  error,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  error?: string | null;
+}) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>Duty station</label>
+      <select
+        id={id}
+        className={`select${error ? " invalid" : ""}`}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-err` : `${id}-hint`}
+      >
+        <option value="">— select your base —</option>
+        {STATION_GROUPS.map((g) => (
+          <optgroup key={g.country} label={g.country}>
+            {g.stations.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      {error ? (
+        <FieldError id={`${id}-err`}>{error}</FieldError>
+      ) : (
+        <span className="pw-hint" id={`${id}-hint`}>
+          Sets whether your orders deliver outside the US (OCONUS).
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * A new-password field with the strength meter and the rules hint — the hint
+ * derives from MIN_PASSWORD_LENGTH so copy can't lie when the rule changes.
+ * (Signup and Account previously each hand-rolled this block.)
+ */
+export function NewPasswordField({
+  id,
+  label,
+  value,
+  onChange,
+  error,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  error?: string | null;
+}) {
+  const strength = value ? passwordStrength(value) : null;
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <PasswordInput
+        id={id}
+        value={value}
+        onChange={onChange}
+        invalid={!!error}
+        autoComplete="new-password"
+        describedBy={`${id}-hint${error ? ` ${id}-err` : ""}`}
+      />
+      {value && (
+        <div
+          className="pw-meter"
+          data-strength={strength}
+          role="img"
+          aria-label={`Password strength: ${strength}`}
+        >
+          <span />
+          <span />
+          <span />
+        </div>
+      )}
+      {error ? (
+        <FieldError id={`${id}-err`}>{error}</FieldError>
+      ) : (
+        <span className="pw-hint" id={`${id}-hint`}>
+          At least {MIN_PASSWORD_LENGTH} characters, with a letter and a number.
+        </span>
+      )}
+    </div>
+  );
 }
 
 /** Password field with a show/hide reveal toggle. */

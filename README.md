@@ -25,7 +25,7 @@ vercel dev        # UI + the serverless functions (needed for extraction, 889, U
 
 ```bash
 npm run build     # type-check + production build to dist/
-npm test          # 94 unit tests (parser, extraction, US Bank mapping, 889)
+npm test          # 126 unit tests (parser, extraction, merge policy, storage contract, US Bank mapping, 889)
 npm run typecheck
 ```
 
@@ -71,11 +71,14 @@ reviewer fills beats a confident wrong value.**
 
 Vendor gets three layers of defense, because scanned thermal receipts carry
 mirrored bleed-through from the back of the paper that OCRs as gibberish
-*above* the real header: a server-side blacklist + shape check + OCR
-corroboration gate ([`textractPostProcessor.ts`](api/textractPostProcessor.ts)),
+*above* the real header: a blacklist + shape check shared by BOTH tiers
+([`vendorRules.ts`](src/core/vendorRules.ts)) with an OCR corroboration gate
+server-side ([`textractPostProcessor.ts`](api/textractPostProcessor.ts)),
 a client-side contact-block anchor, and deterministic overrides for vendors
 whose storefront banner is an unreadable logo
-([`knownVendors.ts`](src/core/knownVendors.ts)).
+([`knownVendors.ts`](src/core/knownVendors.ts)). The cloud/regex merge policy
+is a pure function ([`resultFromText.ts`](src/core/extraction/resultFromText.ts)),
+unit-tested, outside the HTTP adapter.
 
 **Compliance.**
 
@@ -114,15 +117,17 @@ are served as one-hour signed URLs.
 ```
 src/
   core/            UI-free, platform-agnostic (reusable by a future iOS shell)
-    types.ts             domain model
-    draft.ts             ExtractionResult -> ReviewDraft -> PurchaseRecord
+    types.ts             domain model + display vocabularies
+    draft.ts             ExtractionResult -> seedEdits/missingRequired -> PurchaseRecord
+    dates.ts             the one date-normalization owner (slash=US, dot=EU)
     parseReceipt.ts      raw text -> fields
+    vendorRules.ts       bleed-through defense shared by client + serverless
     mandatoryAuth.ts     700 CONS authorization directory as data
     knownVendors.ts      deterministic vendor overrides
     preprocessImage.ts   canvas grayscale/upscale/contrast/binarize
-    storage.ts           RecordStore interface
-    extraction/          the swappable engine seam + router
-  storage/         webStorage (local) | supabaseStore (cloud)
+    storage.ts           RecordStore interface + contract
+    extraction/          the swappable engine seam + router + merge policy
+  storage/         webStorage (local) | supabaseStore (cloud) + contract tests
   auth/            AuthContext + Supabase provider behind one interface
   lib/             US Bank mapping, 889 mapping + PDF, export, formatting
   components/  screens/  store.tsx

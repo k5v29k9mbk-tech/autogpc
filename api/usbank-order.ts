@@ -13,16 +13,11 @@
 //   USBANK_API_BASE   e.g. https://test.autogpc.com
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+// Type-only import (erased at compile) — the wire shape has ONE owner,
+// src/lib/usbankOrder, instead of a second declaration that can drift.
+import type { UsBankLineItem } from "../src/lib/usbankOrder";
 
 const BASE = process.env.USBANK_API_BASE;
-
-type LineItem = {
-  productCode?: string | null;
-  description?: string;
-  qty?: number | null;
-  unitCost?: number | null;
-  lineTotal?: number | null;
-};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -35,21 +30,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { merchantName, requestorName, amount, orderDate, lineItems, documents, autoMatch, accessToken } =
+    const { merchantName, requestorName, amount, orderDate, lineItems, documents, autoMatch } =
       (req.body ?? {}) as {
         merchantName?: string;
         requestorName?: string;
         amount?: number;
         orderDate?: string;
-        lineItems?: LineItem[];
+        lineItems?: UsBankLineItem[];
         documents?: { filename: string; contentType: string; dataBase64: string }[];
         autoMatch?: boolean;
-        accessToken?: string;
       };
     if (!merchantName) {
       res.status(400).json({ error: "bad_request", message: "merchantName is required." });
       return;
     }
+    // Bearer token from the Authorization header — never the JSON body, where
+    // it would land in any body-logging middleware or error report.
+    const accessToken = (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim();
     if (!accessToken) {
       res.status(401).json({ error: "unauthenticated", message: "Sign in to autogpc first — no access token supplied." });
       return;
@@ -110,6 +107,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const controlNumber = order.controlNumber;
     const suggestion = created.matchSuggestion;
 
+    // The order exists from here on — later failures are surfaced as warnings
+    // on the 201, not silently folded into "no match" / "no documents".
+    const warnings: string[] = [];
+
     // 4) Match the order to the statement line the clone just spawned.
     let matched: { merchant: string; amount: number; transDate: string } | null = null;
     if (autoMatch !== false && controlNumber && suggestion?.id) {
@@ -121,9 +122,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (matchRes.ok) {
         matched = {
           merchant: suggestion.merchant ?? merchantName ?? "",
-          amount: suggestion.amount ?? Number(amount) ?? 0,
+          // Number(amount) is NaN (never nullish) for junk input — || catches it.
+          amount: suggestion.amount ?? (Number(amount) || 0),
           transDate: suggestion.transDate ?? "",
         };
+      } else {
+        warnings.push(`Statement match failed (${matchRes.status}) — match it manually in US Bank.`);
       }
     }
 
@@ -138,10 +142,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (docRes.ok) {
         const docBody = (await docRes.json().catch(() => ({}))) as { count?: number };
         documentsUploaded = docBody.count ?? documents.length;
+      } else {
+        warnings.push(`Document upload failed (${docRes.status}) — attach them in US Bank.`);
       }
     }
 
-    res.status(201).json({ ok: true, order, matched, documentsUploaded });
+    res.status(201).json({ ok: true, order, matched, documentsUploaded, warnings });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("usbank-order proxy failed:", message);

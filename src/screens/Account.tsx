@@ -1,16 +1,10 @@
-import { useId, useMemo, useState } from "react";
+import { useId, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, AuthError } from "../auth";
 import type { AuthUser } from "../auth/types";
-import { FieldError, PasswordInput } from "./auth/authShared";
-import {
-  passwordStrength,
-  validateName,
-  validatePassword,
-  validatePasswordConfirm,
-} from "../lib/validation";
+import { DutyStationField, FieldError, NewPasswordField, PasswordInput } from "./auth/authShared";
+import { validateName, validatePassword, validatePasswordConfirm } from "../lib/validation";
 import { IconCheck, IconLogOut, IconMail, IconShield, IconUser } from "../components/icons";
-import { DUTY_STATIONS } from "../lib/dutyStations";
 
 /**
  * Best-effort first/last name for pre-filling the profile inputs. Uses the
@@ -55,16 +49,6 @@ export function Account() {
   const [lastName, setLastName] = useState(seedLast);
   const [dutyStation, setDutyStation] = useState(seedStation);
 
-  // Country-grouped stations for the <optgroup>s (same shape as signup).
-  const stationGroups = useMemo(() => {
-    const groups: { country: string; stations: typeof DUTY_STATIONS }[] = [];
-    for (const s of DUTY_STATIONS) {
-      const last = groups[groups.length - 1];
-      if (last && last.country === s.country) last.stations.push(s);
-      else groups.push({ country: s.country, stations: [s] });
-    }
-    return groups;
-  }, []);
   const [profileState, setProfileState] = useState<"idle" | "saving" | "saved">("idle");
   const [profileErrors, setProfileErrors] = useState<{ firstName?: string; lastName?: string; form?: string }>(
     {},
@@ -177,8 +161,6 @@ export function Account() {
     );
   }
 
-  const strength = newPw ? passwordStrength(newPw) : null;
-
   return (
     <div className="stack" style={{ gap: "var(--s5)", maxWidth: 560 }}>
       <div className="page-head">
@@ -231,31 +213,14 @@ export function Account() {
             )}
           </div>
         </div>
-        <div className="field">
-          <label htmlFor={dutyStationId}>Duty station</label>
-          <select
-            id={dutyStationId}
-            className="select"
-            value={dutyStation}
-            onChange={(e) => {
-              setDutyStation(e.target.value);
-              setProfileState("idle");
-            }}
-            aria-describedby={`${dutyStationId}-hint`}
-          >
-            <option value="">— select your base —</option>
-            {stationGroups.map((g) => (
-              <optgroup key={g.country} label={g.country}>
-                {g.stations.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-          <span className="pw-hint" id={`${dutyStationId}-hint`}>
-            Sets whether your orders deliver outside the US (OCONUS).
-          </span>
-        </div>
+        <DutyStationField
+          id={dutyStationId}
+          value={dutyStation}
+          onChange={(v) => {
+            setDutyStation(v);
+            setProfileState("idle");
+          }}
+        />
         <div className="row" style={{ gap: "var(--s3)", alignItems: "center" }}>
           <button
             className="btn"
@@ -316,39 +281,16 @@ export function Account() {
         ) : (
           <>
             {pwErrors.form && <div style={{ color: "var(--danger)", fontSize: 14 }}>{pwErrors.form}</div>}
-            <div className="field">
-              <label htmlFor={newPwId}>New password</label>
-              <PasswordInput
-                id={newPwId}
-                value={newPw}
-                onChange={(v) => {
-                  setNewPw(v);
-                  setPwState("idle");
-                }}
-                invalid={!!pwErrors.password}
-                autoComplete="new-password"
-                describedBy={`${newPwId}-hint${pwErrors.password ? ` ${newPwId}-err` : ""}`}
-              />
-              {newPw && (
-                <div
-                  className="pw-meter"
-                  data-strength={strength}
-                  role="img"
-                  aria-label={`Password strength: ${strength}`}
-                >
-                  <span />
-                  <span />
-                  <span />
-                </div>
-              )}
-              {pwErrors.password ? (
-                <FieldError id={`${newPwId}-err`}>{pwErrors.password}</FieldError>
-              ) : (
-                <span className="pw-hint" id={`${newPwId}-hint`}>
-                  At least 8 characters, with a letter and a number.
-                </span>
-              )}
-            </div>
+            <NewPasswordField
+              id={newPwId}
+              label="New password"
+              value={newPw}
+              onChange={(v) => {
+                setNewPw(v);
+                setPwState("idle");
+              }}
+              error={pwErrors.password}
+            />
             <div className="field">
               <label htmlFor={confirmPwId}>Confirm new password</label>
               <PasswordInput

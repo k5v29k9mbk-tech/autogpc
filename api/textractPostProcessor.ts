@@ -11,45 +11,13 @@
 // confident wrong value.
 
 import type { ExpenseDocument } from "@aws-sdk/client-textract";
+// Shared with the client parser — one owner for the bleed-through defense
+// (blacklist, shape check, normalization). See src/core/vendorRules.ts.
+import { isNotVendorLine, normalizeForMatch, plausibleVendor } from "../src/core/vendorRules";
 
-function clean(s?: string): string {
+/** Collapse whitespace runs; shared by extract.ts for every Textract string. */
+export function clean(s?: string): string {
   return (s ?? "").replace(/\s+/g, " ").trim();
-}
-
-/** Lowercase, letters/digits only — for fuzzy "does this appear in the OCR text". */
-export function normalizeForMatch(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9à-ÿ]/g, "");
-}
-
-// A receipt's business name is none of these. One line per rejection reason
-// from the spec: phone, date, money/total/tax, txn/receipt id, masked card,
-// url/email, street address, and boilerplate header/footer lines. Kept local
-// and minimal on purpose — not worth coupling this server module to the client
-// parser's regexes for seven one-liners.
-const BLACKLIST: RegExp[] = [
-  /\+?\d[\d\s().-]{6,}\d/, // phone-like digit run
-  /\b\d{1,2}[./-]\d{1,2}[./-]\d{2,4}\b|\b\d{4}-\d{1,2}-\d{1,2}\b/, // date
-  /\d[.,]\d{2}\b|[€$£]|\b(total|subtotal|tax|vat|mwst|ust|change|tender|balance|amount\s*due|gesamt|summe)\b/i, // money / total / tax
-  /\b(receipt|invoice|trans(?:action)?|ref(?:erence)?|auth|order|beleg|bon|no|nr)\b\.?\s*[:#]?\s*\w*\d/i, // txn / receipt id
-  /(?:\*{2,}|x{2,}|#{2,}|•{2,})\s*\d{4}\b|\bxxxx[\s-]?\d{4}\b/i, // masked card
-  /@|\bwww\.|https?:\/\//i, // url / email
-  /^\d+\s+\S|\b(str(?:\.|asse|aße)|street|st\.|ave\.?|avenue|road|rd\.?|blvd|suite|ste\.?|p\.?o\.?\s*box)\b/i, // street address
-  /^(?:thank|welcome|receipt|invoice|quote|quotation|customer\s*copy|merchant\s*copy|order|tax\s*invoice|cash)\b/i, // boilerplate
-];
-
-function isBlacklisted(text: string): boolean {
-  return BLACKLIST.some((re) => re.test(text));
-}
-
-// Shape check: a real name has letters and isn't a bleed-through signature — a
-// single all-lowercase token ("pnivotomi"), or a lowercase→uppercase flip
-// ("muteR" is mirrored "Return" read through thermal-paper bleed-through).
-export function plausibleVendor(v: string): boolean {
-  if ((v.match(/[A-Za-zÀ-ÿ]/g) || []).length < 2) return false;
-  if (/\s/.test(v)) return true; // multi-word names pass
-  if (!/[A-ZÀ-Þ]/.test(v)) return false; // no capital ("gorl2", "pnivotomi")
-  if (/^[a-zà-ÿ]+[A-ZÀ-Þ]{1,2}$/.test(v)) return false; // "muteR"
-  return true;
 }
 
 // 0..1, higher = more name-like. Multiword and a capital read as a storefront
@@ -93,14 +61,19 @@ function scoreCandidate(c: VendorCandidate): number {
 
 const VENDOR_THRESHOLD = 0.45;
 
-/** LINE blocks in document order, above the OCR confidence floor. */
-function ocrLines(doc?: ExpenseDocument, floor = 85): { text: string; confidence: number }[] {
+/**
+ * LINE blocks in document order, above the OCR confidence floor. The floor is
+ * the first bleed-through layer: genuine print scores high-90s, mirrored
+ * bleed-through usually lower. Shared with extract.ts's buildRawText so the
+ * floor lives in exactly one place.
+ */
+export function ocrLines(doc?: ExpenseDocument, floor = 85): { text: string; confidence: number }[] {
   return (doc?.Blocks ?? [])
     .filter((b) => b.BlockType === "LINE" && b.Text && (b.Confidence ?? 100) >= floor)
     .map((b) => ({ text: clean(b.Text), confidence: b.Confidence ?? 100 }));
 }
 
-export type VendorChoice = { vendor: string; confidence: number };
+type VendorChoice = { vendor: string; confidence: number };
 
 /**
  * Pick the vendor from Textract's output. Returns the chosen name and a 0..1
@@ -135,7 +108,7 @@ export function selectVendor(
 
   let best: { text: string; score: number } | null = null;
   for (const c of pool) {
-    if (isBlacklisted(c.text)) continue;
+    if (isNotVendorLine(c.text)) continue;
     if (!plausibleVendor(c.text)) continue;
     // Corroboration gate — only enforceable when we actually have OCR lines.
     if (rawTextSource === "document" && c.label !== "OCR_LINE" && !ocrBlob.includes(normalizeForMatch(c.text))) {

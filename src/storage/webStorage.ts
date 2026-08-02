@@ -3,7 +3,7 @@
 //   - image blobs    -> IndexedDB (the right home for binary data)
 // Everything is local to the browser; nothing is ever uploaded.
 
-import { BLOB_URI_PREFIX, type RecordStore } from "../core/storage";
+import { BLOB_URI_PREFIX, isDisplayableUri, type RecordStore } from "../core/storage";
 import type { PurchaseRecord } from "../core/types";
 
 const RECORDS_KEY = "nexus.records.v1";
@@ -56,6 +56,17 @@ async function idbDelete(key: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(IMAGE_STORE, "readwrite");
     tx.objectStore(IMAGE_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+/** Delete every blob whose key starts with `prefix` (a record's attachments). */
+async function idbDeletePrefix(prefix: string): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(IMAGE_STORE, "readwrite");
+    tx.objectStore(IMAGE_STORE).delete(IDBKeyRange.bound(prefix, prefix + "￿"));
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
@@ -122,13 +133,17 @@ export const webStorage: RecordStore = {
 
   async deleteRecord(id) {
     writeIndex(readIndex().filter((r) => r.id !== id));
-    const key = BLOB_URI_PREFIX + id;
-    const cached = objectUrlCache.get(key);
-    if (cached) {
-      URL.revokeObjectURL(cached);
-      objectUrlCache.delete(key);
+    // Drop the receipt blob AND the record's attachment blobs ("<id>/<attId>")
+    // — the contract in core/storage.ts; leaving them would strand invisible
+    // data on the device forever (nothing else ever deletes them).
+    for (const [uri, url] of objectUrlCache) {
+      if (uri === BLOB_URI_PREFIX + id || uri.startsWith(`${BLOB_URI_PREFIX}${id}/`)) {
+        URL.revokeObjectURL(url);
+        objectUrlCache.delete(uri);
+      }
     }
     await idbDelete(id).catch(() => undefined);
+    await idbDeletePrefix(`${id}/`).catch(() => undefined);
   },
 
   async putImage(key, blob) {
@@ -149,13 +164,18 @@ export const webStorage: RecordStore = {
 
   async resolveImageSrc(imageUri) {
     if (!imageUri) return null;
-    if (!imageUri.startsWith(BLOB_URI_PREFIX)) return imageUri; // data: / http(s):
-    if (objectUrlCache.has(imageUri)) return objectUrlCache.get(imageUri)!;
-    const id = imageUri.slice(BLOB_URI_PREFIX.length);
-    const blob = await idbGet(id);
-    if (!blob) return null;
-    const url = URL.createObjectURL(blob);
-    objectUrlCache.set(imageUri, url);
-    return url;
+    if (imageUri.startsWith(BLOB_URI_PREFIX)) {
+      if (objectUrlCache.has(imageUri)) return objectUrlCache.get(imageUri)!;
+      const id = imageUri.slice(BLOB_URI_PREFIX.length);
+      const blob = await idbGet(id);
+      if (!blob) return null;
+      const url = URL.createObjectURL(blob);
+      objectUrlCache.set(imageUri, url);
+      return url;
+    }
+    // data:/blob:/http(s): pass through; a foreign store's URI (e.g. a cloud
+    // record's "receipt-store:" path seen in guest mode) is unresolvable here —
+    // null, not a broken <img src>.
+    return isDisplayableUri(imageUri) ? imageUri : null;
   },
 };

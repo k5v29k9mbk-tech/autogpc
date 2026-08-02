@@ -12,6 +12,7 @@
 // purchase is always "889 Government"; the review form seeds it from here.
 
 import type { DESIGNATION_889_OPTIONS } from "./types";
+import { normalizeForMatch } from "./vendorRules";
 
 export type KnownVendor = {
   /** Canonical vendor name written to the record. */
@@ -24,12 +25,7 @@ export type KnownVendor = {
   bannerLine?: RegExp;
 };
 
-/** Lowercase, letters/digits only — collapses OCR spacing/punctuation noise. */
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-export const KNOWN_VENDORS: KnownVendor[] = [
+const KNOWN_VENDORS: KnownVendor[] = [
   {
     name: "EXCHANGE",
     designation889: "889 Government",
@@ -48,7 +44,7 @@ const BANNER_ZONE_LINES = 10;
 
 export function detectKnownVendor(rawText: string): KnownVendor | null {
   if (!rawText) return null;
-  const blob = normalize(rawText);
+  const blob = normalizeForMatch(rawText);
   const topLines = rawText
     .split(/\r?\n/)
     .map((l) => l.trim())

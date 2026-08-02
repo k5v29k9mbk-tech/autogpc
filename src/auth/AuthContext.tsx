@@ -37,9 +37,9 @@ const GUEST_FLAG = "nexus.guest.v1";
 
 interface AuthContextValue {
   status: AuthStatus;
+  /** The ONE guest/authenticated predicate — branch on this, nothing else. */
   mode: AuthMode;
   user: AuthUser | null;
-  isGuest: boolean;
   /** Whether the Supabase env vars are present (UI can show a setup hint). */
   configured: boolean;
 
@@ -198,7 +198,6 @@ export function AuthProviderComponent({
       status,
       mode,
       user,
-      isGuest,
       configured: isSupabaseConfigured,
       signUp,
       login,
@@ -217,7 +216,6 @@ export function AuthProviderComponent({
       status,
       mode,
       user,
-      isGuest,
       signUp,
       login,
       logout,

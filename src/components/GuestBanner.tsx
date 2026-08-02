@@ -5,8 +5,8 @@ import { useAuth } from "../auth";
 import { IconAlert } from "./icons";
 
 export function GuestBanner() {
-  const { isGuest } = useAuth();
-  if (!isGuest) return null;
+  const { mode } = useAuth();
+  if (mode !== "guest") return null;
   return (
     <div className="guest-banner" role="status">
       <div className="container">

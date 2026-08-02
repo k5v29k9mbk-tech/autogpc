@@ -78,7 +78,9 @@ export function Login() {
 
   const goGuest = () => {
     continueAsGuest();
-    navigate("/", { replace: true });
+    // Honor ?next like every other sign-in path — a guest arriving from the
+    // SSO prompt should land back on /sso/authorize, not the home screen.
+    navigate(dest, { replace: true });
   };
 
   const goOAuth = (provider: "google" | "apple") => async () => {
