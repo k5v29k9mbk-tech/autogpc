@@ -1024,8 +1024,9 @@ details.collapsible[open] summary::before {
 }
 
 /* ============================================================================
-   Home hero — one title line, then the upload surface itself. No eyebrow, no
-   subhead restating the title, no button row: the front door is the tool.
+   Home hero — headline, one short line, two actions, the mark. The eyebrow and
+   the paragraph that restated the headline are gone: that stack is what read as
+   generated. Keep the copy here short; it is a front door, not a pitch.
    ========================================================================== */
 
 .hero {
@@ -1033,79 +1034,37 @@ details.collapsible[open] summary::before {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
-  column-gap: clamp(24px, 5vw, 64px);
-  row-gap: var(--s6);
+  gap: clamp(24px, 5vw, 64px);
   padding: clamp(16px, 4vh, 48px) 0 var(--s6);
 }
 
-/* Spans both columns so the title reads as the page's, not the panel's. The
-   rule under it does the separating work an eyebrow used to fake. */
 .hero-title {
-  grid-column: 1 / -1;
-  padding-bottom: var(--s5);
-  border-bottom: 1px solid var(--border);
-  font-size: clamp(30px, 4vw, 46px);
+  font-size: clamp(40px, 5.4vw, 64px);
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.02;
   letter-spacing: -0.03em;
 }
 
-/* The drop surface. A <label>, so the whole panel opens the picker and the
-   keyboard reaches it through the input inside. */
-.hero-drop {
-  display: grid;
-  justify-items: start;
-  gap: var(--s3);
-  padding: clamp(28px, 5vw, 52px) clamp(24px, 4vw, 44px);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--r-card);
-  background: var(--surface);
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.hero-drop:hover,
-.hero-drop.drag,
-.hero-drop:focus-within {
-  border-color: var(--brand);
-  background: rgba(197, 246, 59, 0.04);
-}
-
-.hero-drop-ico {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  color: var(--brand);
-  border: 1px solid var(--border-strong);
-}
-
-/* Deliberately smaller than .hero-title — the panel labels an action, it does
-   not compete with the page title above it. */
-.hero-drop-title {
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
-}
-
-.hero-drop-hint {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
+/* One line, and it must add something the headline doesn't say. If it ever
+   needs a second line, cut it instead. */
+.hero-sub {
+  margin-top: var(--s4);
   color: var(--text-muted);
+  font-size: clamp(15px, 1.3vw, 17px);
 }
 
-/* Focusable but invisible — `hidden` would take the input off the tab order. */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.hero-cta {
+  margin-top: var(--s6);
+  display: flex;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+/* Uppercase, tracked CTAs — the reference's button voice. */
+.btn.cta {
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
 }
 
 /* The eagle mark, sitting on the flat background. */

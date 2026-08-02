@@ -1,58 +1,35 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useStore } from "../store";
 import { HeroLogo } from "../components/HeroLogo";
 import { RecordRow } from "../components/ui";
-import { setPendingFile } from "../lib/pendingFile";
 import { IconReceipt, IconShield, IconUpload } from "../components/icons";
 
 export function Home() {
   const { records } = useStore();
   const navigate = useNavigate();
   const recent = records.slice(0, 3);
-  const [dragging, setDragging] = useState(false);
-
-  // The front door does the work: a file dropped here goes straight into the
-  // scan flow, no marketing detour.
-  const take = (f: File | null | undefined) => {
-    if (!f) return;
-    setPendingFile(f);
-    navigate("/scan");
-  };
 
   return (
     <div className="stack" style={{ gap: "var(--s6)" }}>
-      {/* Hero — a title, then the upload surface itself. One line of type: it
-          names the job, it doesn't pitch it, and nothing restates it below. */}
+      {/* Hero — headline, one short line, two actions. No eyebrow above the
+          headline and no paragraph restating it: that stack was the tell. */}
       <section className="hero reveal">
-        <h1 className="hero-title">Turn a receipt into a GPC record.</h1>
-        {/* A <label> gives click-to-browse and keyboard access for free, so the
-            drop surface needs no click handler and no ref. */}
-        <label
-          className={`hero-drop ${dragging ? "drag" : ""}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            take(e.dataTransfer.files?.[0]);
-          }}
-        >
-          <span className="hero-drop-ico">
-            <IconUpload width={22} height={22} />
-          </span>
-          <div className="hero-drop-title">Drop a receipt</div>
-          <span className="hero-drop-hint">or click to browse — JPG, PNG, PDF</span>
-          <input
-            type="file"
-            accept="image/*,application/pdf"
-            className="sr-only"
-            onChange={(e) => take(e.target.files?.[0])}
-          />
-        </label>
+        <div>
+          <h1 className="hero-title">
+            Upload once,
+            <br />
+            we do the rest.
+          </h1>
+          <p className="hero-sub">Receipt in, audit-ready GPC record out.</p>
+          <div className="hero-cta">
+            <button className="btn btn-primary btn-lg cta" onClick={() => navigate("/scan")}>
+              <IconUpload /> Upload receipt
+            </button>
+            <Link to="/records" className="btn btn-lg cta">
+              View my records
+            </Link>
+          </div>
+        </div>
         <div className="hero-visual" aria-hidden="true">
           <HeroLogo />
         </div>
