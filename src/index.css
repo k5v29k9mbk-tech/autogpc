@@ -593,6 +593,23 @@ button {
   opacity: 0.7;
 }
 
+/* "Last used" marker — sits on the top-right edge of the sign-in button for the
+   method the returning user last used. Host button needs position: relative. */
+.tag.last-used {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translateY(-50%);
+  border-radius: 0;
+  border-color: var(--brand-border);
+  background: var(--bg);
+  color: var(--brand-text);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+}
+
 /* --- Validation check (the only routine green) ----------------------------- */
 
 .check {

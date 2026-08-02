@@ -5,6 +5,7 @@
 
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import type { SignInMethod } from "../../auth/lastSignIn";
 import { Logo } from "../../components/Logo";
 import {
   IconAlert,
@@ -117,6 +118,15 @@ export function ConsentCheckbox({
   );
 }
 
+/**
+ * Marks the button for the method the user signed in with last time — a tag on
+ * the button itself rather than a sentence above the form. The host button must
+ * be position: relative.
+ */
+export function LastUsedTag() {
+  return <span className="tag last-used">Last used</span>;
+}
+
 /** Password field with a show/hide reveal toggle. */
 export function PasswordInput({
   id,
@@ -181,6 +191,7 @@ export function ProviderSeams({
   onGoogle,
   onApple,
   busy,
+  lastUsed,
 }: {
   /** When provided, the Google button is live and calls this on click. */
   onGoogle?: () => void;
@@ -188,6 +199,8 @@ export function ProviderSeams({
   onApple?: () => void;
   /** Which provider's redirect is in flight (disables both buttons). */
   busy?: "google" | "apple" | null;
+  /** The method this returning user last signed in with, if any. */
+  lastUsed?: SignInMethod | null;
 }) {
   const anyBusy = busy != null;
   // Pin the "soon" tag to the right edge so the icon + label stay centered in
@@ -218,6 +231,7 @@ export function ProviderSeams({
         >
           <IconGoogle />
           {busy === "google" ? "Redirecting to Google…" : "Continue with Google"}
+          {lastUsed === "google" && <LastUsedTag />}
           {!onGoogle && (
             <span className="tag" style={tagStyle}>
               soon
@@ -239,6 +253,7 @@ export function ProviderSeams({
         >
           <IconApple />
           {busy === "apple" ? "Redirecting to Apple…" : "Continue with Apple"}
+          {lastUsed === "apple" && <LastUsedTag />}
           {!onApple && (
             <span className="tag" style={tagStyle}>
               soon

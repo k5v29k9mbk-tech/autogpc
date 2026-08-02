@@ -3,13 +3,14 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, AuthError } from "../../auth";
 import { lastSignIn } from "../../auth/lastSignIn";
 import { validateEmail } from "../../lib/validation";
-import { AuthShell, Banner, FieldError, PasswordInput, ProviderSeams } from "./authShared";
-
-const LAST_SIGN_IN_LABEL = {
-  password: "your email and password",
-  google: "Google",
-  apple: "Apple",
-} as const;
+import {
+  AuthShell,
+  Banner,
+  FieldError,
+  LastUsedTag,
+  PasswordInput,
+  ProviderSeams,
+} from "./authShared";
 
 export function Login() {
   const { login, signInWithOAuth, resendConfirmation, continueAsGuest, configured } = useAuth();
@@ -105,12 +106,6 @@ export function Login() {
         </div>
       )}
 
-      {lastUsed && (
-        <p className="sub" style={{ marginBottom: "var(--s4)" }}>
-          Last time, you signed in with {LAST_SIGN_IN_LABEL[lastUsed]}.
-        </p>
-      )}
-
       <form className="stack" onSubmit={submit} noValidate>
         {formError && (
           <Banner variant="error">
@@ -171,10 +166,12 @@ export function Login() {
         <button
           type="submit"
           className="btn btn-primary btn-lg btn-block"
+          style={{ position: "relative" }}
           disabled={submitting || !configured}
         >
           {submitting ? <span className="spinner" /> : null}
           {submitting ? "Signing in…" : "Sign in"}
+          {lastUsed === "password" && <LastUsedTag />}
         </button>
 
         <Link to="/create-account" className="btn btn-lg btn-block">
@@ -189,7 +186,11 @@ export function Login() {
         Continue as guest
       </button>
 
-      <ProviderSeams onGoogle={configured ? goOAuth("google") : undefined} busy={oauthBusy} />
+      <ProviderSeams
+        onGoogle={configured ? goOAuth("google") : undefined}
+        busy={oauthBusy}
+        lastUsed={lastUsed}
+      />
     </AuthShell>
   );
 }
