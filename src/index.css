@@ -1024,8 +1024,8 @@ details.collapsible[open] summary::before {
 }
 
 /* ============================================================================
-   Home hero — the upload surface itself. No eyebrow, no headline/subhead pair,
-   no button row: the front door is the tool, so there is nothing here to pitch.
+   Home hero — one title line, then the upload surface itself. No eyebrow, no
+   subhead restating the title, no button row: the front door is the tool.
    ========================================================================== */
 
 .hero {
@@ -1033,8 +1033,21 @@ details.collapsible[open] summary::before {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
   align-items: center;
-  gap: clamp(24px, 5vw, 64px);
+  column-gap: clamp(24px, 5vw, 64px);
+  row-gap: var(--s6);
   padding: clamp(16px, 4vh, 48px) 0 var(--s6);
+}
+
+/* Spans both columns so the title reads as the page's, not the panel's. The
+   rule under it does the separating work an eyebrow used to fake. */
+.hero-title {
+  grid-column: 1 / -1;
+  padding-bottom: var(--s5);
+  border-bottom: 1px solid var(--border);
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 /* The drop surface. A <label>, so the whole panel opens the picker and the
@@ -1067,11 +1080,13 @@ details.collapsible[open] summary::before {
   border: 1px solid var(--border-strong);
 }
 
+/* Deliberately smaller than .hero-title — the panel labels an action, it does
+   not compete with the page title above it. */
 .hero-drop-title {
-  font-size: clamp(28px, 3.4vw, 40px);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
 }
 
 .hero-drop-hint {

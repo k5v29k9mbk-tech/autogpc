@@ -22,8 +22,10 @@ export function Home() {
 
   return (
     <div className="stack" style={{ gap: "var(--s6)" }}>
-      {/* Hero — the upload surface itself, not a pitch for it. */}
+      {/* Hero — a title, then the upload surface itself. One line of type: it
+          names the job, it doesn't pitch it, and nothing restates it below. */}
       <section className="hero reveal">
+        <h1 className="hero-title">Turn a receipt into a GPC record.</h1>
         {/* A <label> gives click-to-browse and keyboard access for free, so the
             drop surface needs no click handler and no ref. */}
         <label
@@ -42,7 +44,7 @@ export function Home() {
           <span className="hero-drop-ico">
             <IconUpload width={22} height={22} />
           </span>
-          <h1 className="hero-drop-title">Drop a receipt</h1>
+          <div className="hero-drop-title">Drop a receipt</div>
           <span className="hero-drop-hint">or click to browse — JPG, PNG, PDF</span>
           <input
             type="file"
