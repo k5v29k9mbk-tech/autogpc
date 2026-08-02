@@ -23,7 +23,6 @@ function record(over: Partial<PurchaseRecord> = {}): PurchaseRecord {
     imageUri: "",
     status: "needs_review",
     documentChecklist: emptyChecklist(),
-    captureSeconds: 30,
     source: "cloud",
     docType: "receipt",
     createdAt: "2026-06-04T00:00:00.000Z",

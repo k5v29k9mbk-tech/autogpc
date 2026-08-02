@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { newId, useStore } from "../store";
-import { recordFromDraft, type RecordEdits } from "../core/draft";
-import { useAuth } from "../auth";
+import { missingRequired, recordFromDraft, seedEdits, type RecordEdits } from "../core/draft";
+import { displayName, useAuth } from "../auth";
 import {
-  DEFAULT_ETO,
   DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS,
   ETO_OPTIONS,
   FINAL_DELIVERY_OUTSIDE_US_OPTIONS,
-  finalDeliveryDefault,
   GPC_CURRENCIES,
   PREPURCHASE_APPROVALS_OPTIONS,
   REQUEST_TO_PURCHASE_OPTIONS,
@@ -18,22 +16,18 @@ import {
   SPEND_ANALYSIS_OPTIONS,
 } from "../lib/usbankOrder";
 import { Field } from "../components/ui";
-import { confidenceBucket, toISODate } from "../lib/format";
+import { confidenceBucket } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
 import { MandatoryAuthCard } from "../components/MandatoryAuthCard";
-import { suggestSpecialPreApproval } from "../core/mandatoryAuth";
-import { detectKnownVendor } from "../core/knownVendors";
 import { IconEye, IconTrash } from "../components/icons";
 import {
   DESIGNATION_889_OPTIONS,
   DOC_TYPE_LABELS,
   STATUS_LABELS,
   STATUS_ORDER,
-  emptyMandatoryAuth,
   type DocType,
   type LineItem,
   type RecordStatus,
-  type Saved889,
 } from "../core/types";
 
 // The review form is exactly the set of fields a reviewer confirms before save.
@@ -43,7 +37,7 @@ const CURRENCIES = ["", ...GPC_CURRENCIES];
 const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as DocType[];
 
 export function Review() {
-  const { draft, setDraft, addRecord } = useStore();
+  const { draft, setDraft, addRecord, deleteAttachment } = useStore();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -51,67 +45,19 @@ export function Review() {
   // review are keyed to it (and carried onto the record at save).
   const [recordId] = useState(newId());
 
-  // Receipts don't carry the requestor — default it to the signed-in cardholder.
-  const cardholderName =
-    (user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ") ?? "").trim();
-
-  const [form, setForm] = useState<Form>(() => {
-    const f = draft?.fields ?? {};
-    return {
-      vendor: f.vendor ?? "",
-      // Normalize the extractor's date (any format) to ISO for the date picker;
-      // fall back to today when the receipt had no parseable date. Editable after.
-      // en-CA renders local time as YYYY-MM-DD (not UTC like toISOString).
-      transactionDate: toISODate(f.transactionDate) || new Date().toLocaleDateString("en-CA"),
-      totalAmount: f.totalAmount ?? "",
-      // Auto-grab the currency: use what the extractor read, else default to USD
-      // (the GPC default) rather than leaving the reviewer on "— select —".
-      currency: f.currency || "USD",
-      // Tax fields are required by US Bank but default to 0.00 there, so seed
-      // them rather than forcing the reviewer to type a zero.
-      taxAmount: f.taxAmount || "0.00",
-      cardLast4: f.cardLast4 ?? "",
-      receiptNumber: f.receiptNumber ?? "",
-      invoiceNumber: f.invoiceNumber ?? "",
-      notes: f.notes ?? "",
-      requestorName: cardholderName,
-      emergencyTypeOperation: DEFAULT_ETO,
-      // Intragovernmental vendors (e.g. AAFES Exchange) always classify as
-      // "889 Government" — seed it; the reviewer can still override.
-      designation889: detectKnownVendor(draft?.rawText ?? "")?.designation889 ?? "",
-      // Required US Bank dropdowns — seed each to its standard GPC option (the
-      // first, most-common choice) so the reviewer confirms rather than picks
-      // from blank. Special Pre-Approval instead seeds from detected categories.
-      // Spend Analysis stays blank: it's item-dependent and can't be defaulted.
-      specialPreApproval:
-        suggestSpecialPreApproval(draft?.mandatoryAuth?.categories ?? []) ||
-        SPECIAL_PRE_APPROVAL_OPTIONS[0],
-      delegatedProcurementAuthority: DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS[0],
-      prePurchaseApprovals: PREPURCHASE_APPROVALS_OPTIONS[0],
-      section508Consideration: SECTION_508_OPTIONS[0],
-      requestToPurchaseReceived: REQUEST_TO_PURCHASE_OPTIONS[0],
-      spendAnalysis: "",
-      requiredSourceScreened: "",
-      // Seed from the cardholder's duty station: CONUS → "No", OCONUS → APO/FPO.
-      // Reviewer still confirms (or overrides) before save.
-      finalDeliveryOutsideUs: finalDeliveryDefault(user?.dutyStationOconus),
-      lineItemTax: "0.00",
-      status: "needs_review",
-      docType: draft?.docType ?? "receipt",
-      lineItems: draft?.lineItems ?? [],
-      mandatoryAuth: draft?.mandatoryAuth ?? emptyMandatoryAuth(),
-      attachments: [],
-    };
-  });
+  // All seed defaults live in core/draft (seedEdits) — the screen just renders.
+  const [form, setForm] = useState<Form>(() =>
+    seedEdits(draft, {
+      cardholderName: displayName(user),
+      dutyStationOconus: user?.dutyStationOconus,
+    }),
+  );
 
   // Required-field validation surfaced on a failed save attempt.
   const [missing, setMissing] = useState<string[]>([]);
   // Storage/network failures on save — otherwise the button silently does nothing.
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  // SAM.gov 889 determination confirmed during review; attached to the record on save.
-  const [section889, setSection889] = useState<Saved889 | null>(null);
 
   // Full-screen view of the uploaded document, for checking fields against the source.
   const [zoom, setZoom] = useState(false);
@@ -164,31 +110,9 @@ export function Review() {
     </Field>
   );
 
-  // US Bank requires every red-asterisk field before an order can be created.
-  // Enforce the same here so a saved record is order-ready, not half-filled.
-  const requiredFields: [keyof Form, string][] = [
-    ["requestorName", "Requestor name"],
-    ["totalAmount", "Amount"],
-    ["transactionDate", "Order date"],
-    ["specialPreApproval", "Special Pre-Approval Obtained"],
-    ["delegatedProcurementAuthority", "Delegated Procurement Authority Used"],
-    ["prePurchaseApprovals", "A/BO and/or RM/FM Pre-Purch Approvals Obtained"],
-    ["section508Consideration", "Items Subject to Section 508 Consideration"],
-    ["requestToPurchaseReceived", "Request to Purchase Received"],
-    ["spendAnalysis", "Spend Analysis"],
-    ["vendor", "Merchant name"],
-    ["requiredSourceScreened", "Required Source Screened"],
-    ["designation889", "889 Designation"],
-    ["finalDeliveryOutsideUs", "Final Delivery Location Outside United States"],
-  ];
-
   const save = async () => {
-    const gaps = requiredFields
-      .filter(([key]) => !String(form[key]).trim())
-      .map(([, label]) => label);
-    // Line items are optional, but any present one needs a description and total.
-    if (form.lineItems.some((li) => !li.description.trim() || !String(li.total ?? "").trim()))
-      gaps.push("Line item description and total");
+    // The required-field policy (US Bank's red asterisks) lives in core/draft.
+    const gaps = missingRequired(form);
     if (gaps.length) {
       setMissing(gaps);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -198,20 +122,26 @@ export function Review() {
     setSaveError(null);
     setSaving(true);
     try {
-      const record = { ...recordFromDraft(draft, form, { id: recordId, finishedAt: Date.now() }), section889 };
+      const record = recordFromDraft(draft, form, { id: recordId });
       await addRecord(record, draft.imageBlob);
       setDraft(null);
       navigate("/records");
     } catch (e) {
-      // Supabase rejects with a plain PostgrestError/StorageError object, not an
-      // Error — read `message` off whatever shape arrives before stringifying.
       console.error("Save failed", e);
-      const msg = (e as { message?: string })?.message;
-      setSaveError(msg || JSON.stringify(e));
+      setSaveError(e instanceof Error ? e.message : JSON.stringify(e));
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const discard = async () => {
+    // Supporting documents were already uploaded to storage during review,
+    // keyed to a record id that will now never exist — remove them so they
+    // don't orphan. Best-effort: a failed delete shouldn't trap the user here.
+    await Promise.allSettled(form.attachments.map((a) => deleteAttachment(a.uri)));
+    setDraft(null);
+    navigate("/scan");
   };
 
   return (
@@ -361,7 +291,11 @@ export function Review() {
             52.204-26 status now; the verdict is attached to the saved record. */}
         <div className="field" style={{ marginTop: "var(--s4)" }}>
           <label>889 representation (SAM.gov lookup)</label>
-          <Section889Field vendor={form.vendor} saved={section889} onChange={setSection889} />
+          <Section889Field
+            vendor={form.vendor}
+            saved={form.section889}
+            onChange={(v) => set("section889", v)}
+          />
         </div>
 
         <div className="field" style={{ marginTop: "var(--s4)" }}>
@@ -433,7 +367,7 @@ export function Review() {
           {saving ? "Saving…" : "Save record"}
         </button>
         <div className="spacer" />
-        <Link to="/scan" className="btn btn-ghost btn-lg">Discard</Link>
+        <button className="btn btn-ghost btn-lg" onClick={discard}>Discard</button>
       </div>
 
       {zoom && draft.imageUri && (

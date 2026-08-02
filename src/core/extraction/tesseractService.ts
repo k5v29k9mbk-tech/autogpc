@@ -11,7 +11,6 @@
 import { createWorker } from "tesseract.js";
 import { preprocessImage } from "../preprocessImage";
 import {
-  isImage,
   type ExtractionInput,
   type ExtractionResult,
   type ExtractionService,
@@ -23,8 +22,6 @@ const LANGS = "eng+deu";
 
 export const tesseractService: ExtractionService = {
   name: "tesseract",
-
-  canHandle: isImage,
 
   async extract(input: ExtractionInput, onProgress?: ProgressCallback): Promise<ExtractionResult> {
     onProgress?.({ stage: "preprocessing", progress: 0, message: "Cleaning up the image" });

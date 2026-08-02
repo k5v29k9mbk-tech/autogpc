@@ -50,7 +50,6 @@ type Row = {
   image_uri: string;
   status: RecordStatus;
   document_checklist: DocumentChecklist;
-  capture_seconds: number | null;
   source: ExtractionSource;
   doc_type: DocType;
   created_at: string;
@@ -82,7 +81,6 @@ function toRow(r: PurchaseRecord): Row {
     image_uri: r.imageUri,
     status: r.status,
     document_checklist: r.documentChecklist,
-    capture_seconds: r.captureSeconds,
     source: r.source,
     doc_type: r.docType,
     created_at: r.createdAt,
@@ -114,7 +112,6 @@ function fromRow(row: Row): PurchaseRecord {
     imageUri: row.image_uri,
     status: row.status,
     documentChecklist: row.document_checklist,
-    captureSeconds: row.capture_seconds,
     source: row.source,
     docType: row.doc_type,
     createdAt: row.created_at,

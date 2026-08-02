@@ -12,7 +12,6 @@
 import * as pdfjsLib from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import {
-  isPdf,
   type ExtractionInput,
   type ExtractionResult,
   type ExtractionService,
@@ -66,8 +65,6 @@ async function extractPdfText(buffer: ArrayBuffer, onProgress?: ProgressCallback
 
 export const pdfTextService: ExtractionService = {
   name: "pdf_text",
-
-  canHandle: isPdf,
 
   async extract(input: ExtractionInput, onProgress?: ProgressCallback): Promise<ExtractionResult> {
     const buffer = await input.blob.arrayBuffer();

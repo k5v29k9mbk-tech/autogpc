@@ -7,12 +7,7 @@
 // credentials are configured.
 
 import { useMemo, useState } from "react";
-import {
-  DEFAULT_ETO,
-  ETO_OPTIONS,
-  GPC_CURRENCIES,
-  toUsBankOrder,
-} from "../lib/usbankOrder";
+import { toUsBankOrder } from "../lib/usbankOrder";
 import { submitUsBankOrder, type CreatedOrder } from "../lib/usbankClient";
 import { buildUsBankDocuments } from "../lib/usbankDocuments";
 import { requiredDocuments } from "../core/mandatoryAuth";
@@ -43,18 +38,18 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   const [requestorEdit, setRequestorEdit] = useState<string | null>(null);
   const requestor = requestorEdit ?? (record.requestorName.trim() || cardholderName);
 
-  const [eto, setEto] = useState<string>(record.emergencyTypeOperation || DEFAULT_ETO);
-  const [currency, setCurrency] = useState<string>(
-    (record.currency || "USD").toUpperCase(),
-  );
+  // ETO and currency were confirmed on Review and live on the record — shown
+  // here read-only rather than re-asked (two answers to one question drift).
+  const eto = record.emergencyTypeOperation;
+  const currency = (record.currency || "USD").toUpperCase();
   const [confirmed, setConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<CreatedOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const draft = useMemo(
-    () => toUsBankOrder(record, { requestorName: requestor, eto, currency }),
-    [record, requestor, eto, currency],
+    () => toUsBankOrder(record, { requestorName: requestor }),
+    [record, requestor],
   );
 
   // Requestor now has a default, so only warn when it's genuinely empty.
@@ -157,38 +152,19 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
               placeholder="Cardholder first and last name"
             />
           </div>
-          <div className="field">
-            <label htmlFor="usbank-eto">Emergency-Type Operation *</label>
-            <select id="usbank-eto" className="select" value={eto} onChange={(e) => setEto(e.target.value)}>
-              {ETO_OPTIONS.map((o) => (
-                <option key={o} value={o}>
-                  {o}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
 
         <dl className="kv">
+          <dt>Emergency-Type Operation *</dt>
+          <dd>{eto}</dd>
+
           <dt>Merchant name *</dt>
           <dd>{draft.payload.merchantName || <span className="muted">— add the vendor —</span>}</dd>
 
           <dt>Amount *</dt>
           <dd className="row" style={{ gap: "var(--s2)", alignItems: "center" }}>
             <span className="mono">{formatAmount(record.totalAmount, currency)}</span>
-            <select
-              aria-label="Source currency"
-              className="select"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              style={{ width: "auto", padding: "2px 6px", fontSize: 12 }}
-            >
-              {GPC_CURRENCIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
+            <span className="muted" style={{ fontSize: 12 }}>{currency}</span>
           </dd>
 
           <dt>Order date *</dt>

@@ -57,7 +57,6 @@ interface AuthContextValue {
   /** Current session access token (for the SSO handoff), or null. */
   getAccessToken: () => Promise<string | null>;
 
-  // Seams surfaced for the UI; current provider throws not_implemented.
   signInWithOAuth: (provider: OAuthProvider) => Promise<void>;
 }
 

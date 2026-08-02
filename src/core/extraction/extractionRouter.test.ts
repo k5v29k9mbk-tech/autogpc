@@ -20,17 +20,16 @@ const { pdfExtract, tessExtract, renderThumb } = vi.hoisted(() => ({
 
 vi.mock("./pdfTextService", async (importOriginal) => {
   const mod = await importOriginal<typeof import("./pdfTextService")>();
-  return { NoTextLayerError: mod.NoTextLayerError, pdfTextService: { name: "pdf_text", canHandle: () => true, extract: pdfExtract } };
+  return { NoTextLayerError: mod.NoTextLayerError, pdfTextService: { name: "pdf_text", extract: pdfExtract } };
 });
 vi.mock("./tesseractService", () => ({
-  tesseractService: { name: "tesseract", canHandle: () => true, extract: tessExtract },
+  tesseractService: { name: "tesseract", extract: tessExtract },
 }));
 // Cloud rejects so the router always exercises the local paths, regardless of
 // whether VITE_CLOUD_EXTRACTION leaked in from .env.local.
 vi.mock("./cloudExtractionService", () => ({
   cloudExtractionService: {
     name: "cloud",
-    canHandle: () => true,
     extract: vi.fn().mockRejectedValue(new Error("no cloud in tests")),
   },
 }));

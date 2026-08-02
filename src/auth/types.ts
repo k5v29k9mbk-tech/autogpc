@@ -65,7 +65,6 @@ export type AuthErrorCode =
   | "weak_password"
   | "rate_limited"
   | "network"
-  | "not_implemented"
   | "config_missing"
   | "unknown";
 
@@ -161,8 +160,6 @@ export interface AuthProvider {
    */
   getAccessToken(): Promise<string | null>;
 
-  // --- Future-provider seams (declared, not implemented this sprint) ---------
-
   /**
    * "Sign in with Google / Apple". Supabase supports these natively via
    * signInWithOAuth — it redirects the page to the provider and back to
@@ -171,12 +168,17 @@ export interface AuthProvider {
    * (and, for Apple, a Services ID + key configured in the dashboard).
    */
   signInWithOAuth(provider: OAuthProvider): Promise<void>;
+}
 
-  /**
-   * SEAM (b): CAC / PIV smart-card login. This will NOT go through Supabase —
-   * it requires server-side mutual TLS + DoD cert-chain validation at the proxy
-   * layer (arrives with the GovCloud backend). Placeholder only; throws
-   * AuthError("not_implemented").
-   */
-  signInWithCAC(): Promise<never>;
+/**
+ * The cardholder's display name — full name when the provider supplied one,
+ * else first + last, else "". The one owner of this derivation (Review,
+ * the US Bank card, and the account menu all need it).
+ */
+export function displayName(
+  user: Pick<AuthUser, "fullName" | "firstName" | "lastName"> | null | undefined,
+): string {
+  return (
+    user?.fullName ?? [user?.firstName, user?.lastName].filter(Boolean).join(" ")
+  ).trim();
 }

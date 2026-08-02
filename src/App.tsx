@@ -8,7 +8,6 @@ import { RequireSession } from "./components/RequireSession";
 // pdfjs (Scan) and the lazy jsPDF export (RecordDetail) only download when the
 // user actually navigates there. Screens are named exports, so map them to the
 // default export lazy() expects.
-const Landing = lazy(() => import("./screens/Landing").then((m) => ({ default: m.Landing })));
 const Home = lazy(() => import("./screens/Home").then((m) => ({ default: m.Home })));
 const Scan = lazy(() => import("./screens/Scan").then((m) => ({ default: m.Scan })));
 const Review = lazy(() => import("./screens/Review").then((m) => ({ default: m.Review })));
@@ -53,7 +52,6 @@ const TITLES: [prefix: string, label: string][] = [
   ["/auth/callback", "Signing in"],
   ["/sso/authorize", "Authorize"],
   ["/terms", "Terms"],
-  ["/marketing", "Government Purchase Card automation"],
 ];
 
 function PageTitle() {
@@ -82,10 +80,6 @@ export default function App() {
 
         {/* SSO handoff for partner apps ("Sign in with Nexus"). */}
         <Route path="sso/authorize" element={<SsoAuthorize />} />
-
-        {/* Marketing site — public, stashed off the main flow. Reachable from the
-            app nav (after sign-in) and from the login screen. */}
-        <Route path="marketing" element={<Landing />} />
 
         {/* App shell — the front door. Requires a session or guest mode, so an
             anonymous visit to "/" lands on the login screen. */}

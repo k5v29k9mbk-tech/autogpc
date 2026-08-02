@@ -282,10 +282,4 @@ export const supabaseAuthProvider: AuthProvider = {
       throw mapError(error, `Could not start ${label} sign-in.`);
     }
   },
-
-  async signInWithCAC(): Promise<never> {
-    // SEAM (b). CAC/PIV will NOT go through Supabase — it needs server-side
-    // mutual TLS + DoD cert-chain validation at the proxy layer (GovCloud).
-    throw new AuthError("not_implemented", "CAC / PIV sign-in isn't available yet.");
-  },
 };

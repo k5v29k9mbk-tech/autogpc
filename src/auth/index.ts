@@ -3,7 +3,7 @@
 // swappable behind the AuthProvider interface.
 
 export { AuthProviderComponent, useAuth } from "./AuthContext";
-export { AuthError } from "./types";
+export { AuthError, displayName } from "./types";
 export type {
   AuthUser,
   AuthMode,

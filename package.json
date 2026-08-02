@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Nexus — receipt OCR + field extraction for GPC cardholders. Sprint 1 persuasion demo (client-side only).",
+  "description": "Nexus — receipt OCR + field extraction for GPC cardholders. Prototype: browser extraction with Textract/889/US Bank serverless functions.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.app.json --noEmit && vite build",

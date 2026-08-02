@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useStore } from "../store";
 import { routeExtraction } from "../core/extraction/extractionRouter";
 import { draftFromResult } from "../core/draft";
-import type { ExtractionProgress } from "../core/extraction/extractionService";
+import { isPdf as isPdfInput, type ExtractionProgress } from "../core/extraction/extractionService";
 import { renderPdfThumbnail } from "../lib/pdfThumbnail";
 import { IconFile, IconImage, IconUpload } from "../components/icons";
 
@@ -14,7 +14,6 @@ const STAGE_TEXT: Record<ExtractionProgress["stage"], string> = {
   preprocessing: "Optimizing the image",
   recognizing: "Reading the document",
   parsing: "Structuring fields",
-  done: "Done",
 };
 
 export function Scan() {
@@ -44,7 +43,7 @@ export function Scan() {
     const seq = ++pickSeq.current;
     setError(null);
     setFile(f);
-    const pdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+    const pdf = isPdfInput({ blob: f, mimeType: f.type, fileName: f.name });
     setIsPdf(pdf);
     setPreviewUrl(null);
     // The source file is the document of record until a thumbnail replaces it,
@@ -76,7 +75,6 @@ export function Scan() {
     setWorking(true);
     setError(null);
     setProgress({ stage: "loading", progress: 0 });
-    const begin = Date.now();
 
     try {
       const result = await routeExtraction(
@@ -89,7 +87,6 @@ export function Scan() {
           // Not gated on previewUrl: a PDF with no renderable thumbnail still
           // has to be stored, or the record saves with no document at all.
           imageBlob: previewBlob,
-          captureStartedAt: begin,
         }),
       );
       navigate("/review");

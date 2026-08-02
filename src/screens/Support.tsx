@@ -8,10 +8,8 @@ import { useAuth } from "../auth";
 import {
   IconActivity,
   IconAlert,
-  IconBook,
   IconCheck,
   IconCopy,
-  IconExternal,
   IconLifebuoy,
   IconMail,
 } from "../components/icons";
@@ -26,7 +24,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How accurate is the extraction?",
-    a: "Most clean receipts and invoices extract cleanly. Anything below your confidence threshold (set in Settings) is flagged for review before it counts as a record.",
+    a: "Most clean receipts and invoices extract cleanly. Every extraction lands on the Review screen first, so you confirm or correct the fields before anything counts as a record.",
   },
   {
     q: "Where is my data stored?",
@@ -34,7 +32,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Can I export my records?",
-    a: "Yes — export to CSV, JSON, or PDF from the Records screen, or pull a full archive from Settings → Data & privacy.",
+    a: "Yes — open any record and use Export for a JSON copy of its data and audit trail.",
   },
   {
     q: "How do I delete my account?",
@@ -110,20 +108,6 @@ export function Support() {
         ))}
       </section>
 
-      {/* Resources */}
-      <section className="card stack" style={{ gap: "var(--s2)" }}>
-        <h2 className="card-title row" style={{ gap: "var(--s2)", margin: "0 0 var(--s2)" }}>
-          <IconBook width={15} height={15} /> Resources
-        </h2>
-        <ResourceLink label="Documentation" hint="Guides, FAQs, and how-tos." href="/marketing" />
-        <ResourceLink label="What's new" hint="Recent releases and changes." href="/marketing" />
-        <ResourceLink
-          label="Status"
-          hint="Live service status and incident history."
-          href="/marketing"
-        />
-      </section>
-
       {/* Diagnostics */}
       <section className="card stack" style={{ gap: "var(--s4)" }}>
         <h2 className="card-title row" style={{ gap: "var(--s2)", margin: 0 }}>
@@ -148,17 +132,5 @@ export function Support() {
         </div>
       </section>
     </div>
-  );
-}
-
-function ResourceLink({ label, hint, href }: { label: string; hint: string; href: string }) {
-  return (
-    <a className="resource-link" href={href}>
-      <div>
-        <div className="setting-label">{label}</div>
-        <div className="setting-hint">{hint}</div>
-      </div>
-      <IconExternal width={16} height={16} className="muted" />
-    </a>
   );
 }

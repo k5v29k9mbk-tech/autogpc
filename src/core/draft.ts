@@ -1,13 +1,12 @@
 // Record assembly — the UI-free core module that owns the staged transform
-//   ExtractionResult → ReviewDraft → PurchaseRecord.
+//   ExtractionResult → ReviewDraft → RecordEdits → PurchaseRecord.
 //
-// DocType inference and checklist derivation used to live inside Scan and Review
-// (.tsx) where they could only be exercised by rendering a screen. They are pure
-// domain rules, so they belong here: one interface, one place to test, reusable
-// by a future iOS shell. Screens now call draftFromResult() / recordFromDraft()
-// and hold none of these rules.
+// The domain rules for that transform live here, not in screens: DocType
+// inference, checklist derivation, the seed defaults a reviewer starts from
+// (seedEdits), and the required-field policy that blocks a save
+// (missingRequired). Review renders the form; this module decides its contents.
 
-import { emptyChecklist } from "./types";
+import { emptyChecklist, emptyMandatoryAuth } from "./types";
 import type {
   Attachment,
   DocType,
@@ -17,13 +16,28 @@ import type {
   MandatoryAuth,
   PurchaseRecord,
   RecordStatus,
+  Saved889,
 } from "./types";
-import { detectAuthCategories } from "./mandatoryAuth";
+import { detectAuthCategories, suggestSpecialPreApproval } from "./mandatoryAuth";
+import { detectKnownVendor } from "./knownVendors";
+import { toIsoDate } from "./dates";
+// ponytail: core importing lib mirrors extractionRouter -> lib/pdfThumbnail;
+// the US Bank option vocabularies have one owner (lib/usbankOrder) and seeding
+// needs them. Move the vocabularies into core/ if the layering ever firms up.
+import {
+  DEFAULT_ETO,
+  DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS,
+  finalDeliveryDefault,
+  PREPURCHASE_APPROVALS_OPTIONS,
+  REQUEST_TO_PURCHASE_OPTIONS,
+  SECTION_508_OPTIONS,
+  SPECIAL_PRE_APPROVAL_OPTIONS,
+} from "../lib/usbankOrder";
 import type { ExtractionResult } from "./extraction/extractionService";
 
 /**
  * The transient, in-flight capture between extraction and save: extracted
- * fields plus the pending image, inferred DocType, and capture start time.
+ * fields plus the pending image and inferred DocType.
  * Lives only in the store until the reviewer saves it.
  */
 export type ReviewDraft = {
@@ -35,7 +49,6 @@ export type ReviewDraft = {
   imageUri: string; // preview src (object URL or data URL)
   imageBlob: Blob | null; // pending blob to persist on save
   docType: DocType;
-  captureStartedAt: number; // ms epoch — start of the capture timer
   /** Auto-detected mandatory-authorization seed; reviewer edits before save. */
   mandatoryAuth: MandatoryAuth;
 };
@@ -71,7 +84,99 @@ export type RecordEdits = {
   // Mandatory-authorization detection + the supporting docs uploaded on review.
   mandatoryAuth: MandatoryAuth;
   attachments: Attachment[];
+  /** SAM.gov 889 determination confirmed during review (null until looked up). */
+  section889: Saved889 | null;
 };
+
+/** What seeding needs to know about the signed-in user. Structural, so core
+ *  doesn't depend on the auth module's AuthUser type. */
+export type SeedUser = {
+  /** Cardholder display name — receipts don't carry the requestor. */
+  cardholderName?: string;
+  /** Duty-station OCONUS flag; seeds "Final Delivery Outside US?". */
+  dutyStationOconus?: boolean | null;
+};
+
+/**
+ * The form state a reviewer starts from: extracted fields normalized for the
+ * form controls, plus every default the app can responsibly pre-answer. The
+ * rules, in one place:
+ *  - dates normalize to ISO for the date picker, falling back to today;
+ *  - currency defaults to USD (the GPC default), tax fields to "0.00";
+ *  - requestor defaults to the signed-in cardholder;
+ *  - known intragovernmental vendors (e.g. AAFES Exchange) seed "889 Government";
+ *  - each required US Bank dropdown seeds its standard GPC answer — except
+ *    Spend Analysis and Required Source (item-dependent, reviewer must pick),
+ *    and Special Pre-Approval, which seeds from detected auth categories;
+ *  - Final Delivery seeds from the duty station (CONUS "No", OCONUS APO/FPO).
+ */
+export function seedEdits(draft: ReviewDraft | null, user: SeedUser = {}): RecordEdits {
+  const f = draft?.fields ?? {};
+  return {
+    vendor: f.vendor ?? "",
+    // en-CA renders local time as YYYY-MM-DD (not UTC like toISOString).
+    transactionDate: toIsoDate(f.transactionDate) ?? new Date().toLocaleDateString("en-CA"),
+    totalAmount: f.totalAmount ?? "",
+    currency: f.currency || "USD",
+    taxAmount: f.taxAmount || "0.00",
+    cardLast4: f.cardLast4 ?? "",
+    receiptNumber: f.receiptNumber ?? "",
+    invoiceNumber: f.invoiceNumber ?? "",
+    notes: f.notes ?? "",
+    requestorName: user.cardholderName ?? "",
+    emergencyTypeOperation: DEFAULT_ETO,
+    designation889: detectKnownVendor(draft?.rawText ?? "")?.designation889 ?? "",
+    specialPreApproval:
+      suggestSpecialPreApproval(draft?.mandatoryAuth?.categories ?? []) ||
+      SPECIAL_PRE_APPROVAL_OPTIONS[0],
+    delegatedProcurementAuthority: DELEGATED_PROCUREMENT_AUTHORITY_OPTIONS[0],
+    prePurchaseApprovals: PREPURCHASE_APPROVALS_OPTIONS[0],
+    section508Consideration: SECTION_508_OPTIONS[0],
+    requestToPurchaseReceived: REQUEST_TO_PURCHASE_OPTIONS[0],
+    spendAnalysis: "",
+    requiredSourceScreened: "",
+    finalDeliveryOutsideUs: finalDeliveryDefault(user.dutyStationOconus),
+    lineItemTax: "0.00",
+    status: "needs_review",
+    docType: draft?.docType ?? "receipt",
+    lineItems: draft?.lineItems ?? [],
+    mandatoryAuth: draft?.mandatoryAuth ?? emptyMandatoryAuth(),
+    attachments: [],
+    section889: null,
+  };
+}
+
+/** Every red-asterisk US Bank Create-Order field, with its form label. */
+const REQUIRED_FIELDS: [keyof RecordEdits & string, string][] = [
+  ["requestorName", "Requestor name"],
+  ["totalAmount", "Amount"],
+  ["transactionDate", "Order date"],
+  ["specialPreApproval", "Special Pre-Approval Obtained"],
+  ["delegatedProcurementAuthority", "Delegated Procurement Authority Used"],
+  ["prePurchaseApprovals", "A/BO and/or RM/FM Pre-Purch Approvals Obtained"],
+  ["section508Consideration", "Items Subject to Section 508 Consideration"],
+  ["requestToPurchaseReceived", "Request to Purchase Received"],
+  ["spendAnalysis", "Spend Analysis"],
+  ["vendor", "Merchant name"],
+  ["requiredSourceScreened", "Required Source Screened"],
+  ["designation889", "889 Designation"],
+  ["finalDeliveryOutsideUs", "Final Delivery Location Outside United States"],
+];
+
+/**
+ * US Bank requires every red-asterisk field before an order can be created;
+ * the same policy blocks a save here so a saved record is order-ready, not
+ * half-filled. Returns the labels of what's missing (empty = save allowed).
+ */
+export function missingRequired(edits: RecordEdits): string[] {
+  const gaps = REQUIRED_FIELDS.filter(([key]) => !String(edits[key]).trim()).map(
+    ([, label]) => label,
+  );
+  // Line items are optional, but any present one needs a description and total.
+  if (edits.lineItems.some((li) => !li.description.trim() || !String(li.total ?? "").trim()))
+    gaps.push("Line item description and total");
+  return gaps;
+}
 
 /**
  * Best guess at DocType from an extraction. Native-PDF text usually means a
@@ -106,7 +211,6 @@ export function draftFromResult(
   opts: {
     imageUri: string;
     imageBlob: Blob | null;
-    captureStartedAt: number;
     docType?: DocType;
   },
 ): ReviewDraft {
@@ -120,7 +224,6 @@ export function draftFromResult(
     imageUri: opts.imageUri,
     imageBlob: opts.imageBlob,
     docType: opts.docType ?? inferDocType(result),
-    captureStartedAt: opts.captureStartedAt,
     mandatoryAuth: {
       categories: detectAuthCategories(result.lineItems, result.rawText, result.fields.totalAmount),
       germanVendor: currency === "EUR", // VAT-relief form needed; reviewer overrides
@@ -131,15 +234,13 @@ export function draftFromResult(
 
 /**
  * Assemble the final, persistable PurchaseRecord from a reviewed draft and the
- * reviewer's edits. Trims field values, derives the checklist from DocType, and
- * measures capture time from the draft's start to `finishedAt`.
+ * reviewer's edits. Trims field values and derives the checklist from DocType.
  */
 export function recordFromDraft(
   draft: ReviewDraft,
   edits: RecordEdits,
-  ctx: { id: string; finishedAt: number; now?: string },
+  ctx: { id: string; now?: string },
 ): PurchaseRecord {
-  const captureSeconds = Math.max(0, Math.round((ctx.finishedAt - draft.captureStartedAt) / 1000));
   const now = ctx.now ?? new Date().toISOString();
   return {
     id: ctx.id,
@@ -168,14 +269,13 @@ export function recordFromDraft(
       finalDeliveryOutsideUs: edits.finalDeliveryOutsideUs.trim(),
       lineItemTax: edits.lineItemTax.trim() || "0.00",
     },
-    section889: null, // set later on the record detail page via the 889 lookup
+    section889: edits.section889,
     mandatoryAuth: edits.mandatoryAuth,
     attachments: edits.attachments,
     rawOcrText: draft.rawText,
     imageUri: draft.imageUri,
     status: edits.status,
     documentChecklist: checklistForDocType(edits.docType),
-    captureSeconds,
     source: draft.source,
     docType: edits.docType,
     createdAt: now,

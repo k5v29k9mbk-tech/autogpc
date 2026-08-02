@@ -89,7 +89,6 @@ function nonEmpty(fields: Partial<PurchaseRecord>): Partial<PurchaseRecord> {
 
 export const cloudExtractionService: ExtractionService = {
   name: "cloud",
-  canHandle: (input) => isImage(input) || isPdf(input),
   async extract(input: ExtractionInput, onProgress?: ProgressCallback): Promise<ExtractionResult> {
     onProgress?.({ stage: "recognizing", progress: 0.2, message: "Cloud extraction" });
 

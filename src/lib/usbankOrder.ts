@@ -6,12 +6,16 @@
 //   stored   : amount (number), orderDate (YYYY-MM-DD), lineItems[]
 //                lineItems[] = { productCode, description, qty, unitCost, lineTotal }
 //   NOT stored by the clone yet (form-only): Emergency-Type Operation, 889
-//                Designation, Total/Line-Item Tax. We surface those as warnings /
-//                manual fields rather than silently dropping them.
+//                Designation, Total/Line-Item Tax. Those stay on the record
+//                (record.usBank et al.) and surface as warnings here.
 //
 // Pure and UI-free so it can be unit-tested and reused by a future iOS shell.
 
+import { toIsoDate } from "../core/dates";
 import type { LineItem, PurchaseRecord } from "../core/types";
+
+// Re-exported for existing importers/tests; core/dates owns the implementation.
+export { toIsoDate };
 
 export type UsBankLineItem = {
   productCode: string | null;
@@ -35,14 +39,6 @@ export type UsBankOrderDraft = {
   payload: UsBankOrderPayload;
   /** Things a human must confirm/fix before submitting. */
   warnings: string[];
-  /** US Bank form fields the clone API can't persist yet — carried for the UI. */
-  manual: {
-    emergencyTypeOperation: string; // default; needs human confirmation
-    designation889: string | null; // deferred to a later sprint
-    totalTax: number | null;
-    /** Source currency, ISO code. US Bank requires it; OCONUS orders aren't USD. */
-    currency: string;
-  };
 };
 
 /** ETO is almost always this; still requires a human to confirm per order. */
@@ -194,23 +190,6 @@ function toNumber(s: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/**
- * Normalize an extracted date to YYYY-MM-DD, or null if not confidently
- * parseable. Slash dates are read US-style (MM/DD/YYYY), dotted dates EU-style
- * (DD.MM.YYYY) — matching how parseReceipt detects them.
- */
-export function toIsoDate(raw: string | null | undefined): string | null {
-  const s = (raw ?? "").trim();
-  if (!s) return null;
-  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
-  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
-  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s); // US MM/DD/YYYY
-  if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
-  m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s); // EU DD.MM.YYYY
-  if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
-  return null;
-}
-
 function mapLineItem(li: LineItem): UsBankLineItem {
   return {
     productCode: null,
@@ -230,7 +209,7 @@ function mapLineItem(li: LineItem): UsBankLineItem {
  */
 export function toUsBankOrder(
   record: PurchaseRecord,
-  opts: { requestorName?: string; eto?: string; currency?: string } = {},
+  opts: { requestorName?: string } = {},
 ): UsBankOrderDraft {
   const warnings: string[] = [];
 
@@ -244,9 +223,8 @@ export function toUsBankOrder(
   const amount = toNumber(record.totalAmount) ?? 0;
   if (amount <= 0) warnings.push("Amount is required and must be greater than 0.");
 
-  // Reviewer override wins over the detected currency (e.g. an OCONUS receipt
-  // whose symbol didn't survive OCR). US Bank's Source Currency is required.
-  const currency = (opts.currency ?? record.currency).trim().toUpperCase();
+  // The reviewer confirmed the currency on Review; US Bank's Source Currency is required.
+  const currency = record.currency.trim().toUpperCase();
   if (currency && currency !== "USD")
     warnings.push(`Source currency is ${currency} — enter the converted USD amount US Bank will settle.`);
   else if (!currency) warnings.push("Currency not detected — confirm the Source Currency before submitting.");
@@ -262,8 +240,6 @@ export function toUsBankOrder(
   // Form-only fields the clone API can't store yet:
   warnings.push("Confirm the 889 representation below and attach the downloaded record.");
 
-  const eto = (opts.eto ?? DEFAULT_ETO).trim() || DEFAULT_ETO;
-
   const payload: UsBankOrderPayload = {
     merchantName,
     requestorName,
@@ -272,14 +248,5 @@ export function toUsBankOrder(
     lineItems,
   };
 
-  return {
-    payload,
-    warnings,
-    manual: {
-      emergencyTypeOperation: eto,
-      designation889: null,
-      totalTax: toNumber(record.taxAmount),
-      currency,
-    },
-  };
+  return { payload, warnings };
 }

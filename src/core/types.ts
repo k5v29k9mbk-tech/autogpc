@@ -132,20 +132,6 @@ export type UsBankOrderFields = {
   lineItemTax: string;
 };
 
-export function emptyUsBankFields(): UsBankOrderFields {
-  return {
-    specialPreApproval: "",
-    delegatedProcurementAuthority: "",
-    prePurchaseApprovals: "",
-    section508Consideration: "",
-    requestToPurchaseReceived: "",
-    spendAnalysis: "",
-    requiredSourceScreened: "",
-    finalDeliveryOutsideUs: "",
-    lineItemTax: "0.00",
-  };
-}
-
 export type PurchaseRecord = {
   id: string;
   vendor: string;
@@ -174,7 +160,6 @@ export type PurchaseRecord = {
   imageUri: string;
   status: RecordStatus;
   documentChecklist: DocumentChecklist;
-  captureSeconds: number | null; // measured capture time (retained on the record; no longer surfaced)
   source: ExtractionSource;
   docType: DocType;
   createdAt: string;

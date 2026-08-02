@@ -26,7 +26,6 @@ function record(over: Partial<PurchaseRecord> = {}): PurchaseRecord {
     imageUri: "",
     status: "needs_review",
     documentChecklist: emptyChecklist(),
-    captureSeconds: 30,
     source: "cloud",
     docType: "receipt",
     createdAt: "2026-06-04T00:00:00.000Z",
@@ -95,22 +94,8 @@ describe("toUsBankOrder", () => {
     expect(warnings.some((w) => w.toLowerCase().includes("line items"))).toBe(true);
   });
 
-  it("carries tax + ETO default + currency in manual fields", () => {
-    const { manual } = toUsBankOrder(record({ taxAmount: "2.50" }), { requestorName: "X" });
-    expect(manual.totalTax).toBe(2.5);
-    expect(manual.emergencyTypeOperation).toBe("Not in support of ETO");
-    expect(manual.designation889).toBeNull();
-    expect(manual.currency).toBe("USD");
-  });
-
-  it("honors an ETO and currency override", () => {
-    const { manual, warnings } = toUsBankOrder(record(), {
-      requestorName: "X",
-      eto: "In Support of ETO",
-      currency: "eur",
-    });
-    expect(manual.emergencyTypeOperation).toBe("In Support of ETO");
-    expect(manual.currency).toBe("EUR");
+  it("reads the currency off the record, case-insensitively", () => {
+    const { warnings } = toUsBankOrder(record({ currency: "eur" }), { requestorName: "X" });
     expect(warnings.some((w) => w.includes("EUR"))).toBe(true);
   });
 });

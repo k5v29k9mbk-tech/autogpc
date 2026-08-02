@@ -2,7 +2,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Static SPA. No env vars, no server. Everything (PDF text + OCR) runs in the browser.
+// SPA + Vercel serverless functions in api/ (extraction, 889 search, US Bank
+// proxy). Client-side extraction (PDF text + OCR) runs in the browser.
 export default defineConfig({
   plugins: [react()],
   worker: {

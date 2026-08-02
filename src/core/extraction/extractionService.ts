@@ -20,8 +20,7 @@ export type ExtractionStage =
   | "loading"
   | "preprocessing"
   | "recognizing"
-  | "parsing"
-  | "done";
+  | "parsing";
 
 export type ExtractionProgress = {
   stage: ExtractionStage;
@@ -46,8 +45,6 @@ export type ExtractionResult = {
 export interface ExtractionService {
   /** Human-readable name for diagnostics / the source tag. */
   readonly name: ExtractionSource;
-  /** Cheap, synchronous capability check used by the router. */
-  canHandle(input: ExtractionInput): boolean;
   extract(input: ExtractionInput, onProgress?: ProgressCallback): Promise<ExtractionResult>;
 }
 
