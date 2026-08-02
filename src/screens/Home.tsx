@@ -94,8 +94,8 @@ export function Home() {
         <div className="trustline">
           <IconShield width={15} height={15} />
           <span>
-            This prototype does not connect to US Bank, PIEE, or any government system. It only
-            demonstrates receipt OCR, field extraction, review, and structured export.
+            Prototype. Not connected to real US Bank, PIEE, or any government system — the order
+            handoff targets a US Bank Access Online test environment.
           </span>
         </div>
       </section>

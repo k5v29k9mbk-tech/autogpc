@@ -1,143 +1,111 @@
-# Nexus
+# Nexus / AutoGPC
 
-**Receipt OCR for GPC cardholders.** Upload a receipt, invoice, quote, or PDF;
-Nexus reads it in the browser, extracts the key fields, lets you review and
-correct them, and produces a clean structured summary for **manual** GPC / US
-Bank entry — turning a ~12-minute order into under a minute.
+**Receipt → audit-ready GPC order.** A cardholder uploads a receipt, invoice, or
+PDF; Nexus reads it, extracts the fields, checks the vendor's Section 889
+representation in SAM.gov, flags the mandatory-authorization rules that apply,
+collects the supporting documents, and hands the finished order to US Bank
+Access Online — created, matched to its statement line, documents attached.
 
-> **This prototype does not connect to US Bank, PIEE, or any government system.
-> It only demonstrates receipt OCR, field extraction, review, and structured
-> export.**
-
-This is a **Sprint 1 persuasion demo**, not a production MVP. Its job is to make
-the time savings *visible and felt*. Everything runs **client-side** — no
-backend, no API key, no database, no login.
+> **Prototype.** Not connected to real US Bank, PIEE, or any government system.
+> The order handoff targets a US Bank Access Online **test clone**. Commercial
+> AWS Textract regions are for synthetic/scrubbed data only — real GPC PII
+> requires an AWS GovCloud region under an ATO.
 
 ---
 
-## What it does
+## Run it
 
-- **Routes by document type** to the right open-source engine, all in-browser:
-  - **Native PDFs** (vendor quotes/invoices with a real text layer) → text is
-    extracted directly with `pdfjs-dist`. **No OCR. Instant and exact.**
-  - **Images** (thermal/scanned receipts) → canvas **preprocessing**
-    (grayscale → upscale → contrast → Otsu binarize) then **Tesseract.js** OCR.
-  - **Fallback** → instant **mock** results so a demo never dead-ends.
-- **Structures raw text into fields** with a pure, tested regex parser
-  (`parseReceipt`): vendor, date (US/EU/ISO formats), total, currency, tax/VAT,
-  card last-4, receipt/invoice number, and line items. It prefers `null` over a
-  wrong guess — the review screen is there to fix gaps.
-- **Makes the savings tangible:** a live capture timer, a "Captured in 0:38"
-  confirmation with the ~12-min manual contrast, and a cumulative time-saved
-  counter on Home.
-- **Persists locally:** record index in `localStorage`, image blobs in
-  `IndexedDB`. Survives reload. Seeded with five scrubbed sample records on
-  first launch.
-- **Exports** a copy-pasteable structured summary and JSON. **No automated
-  submission anywhere.**
-
----
-
-## Run locally
-
-Requirements: Node 18+ (built and tested on Node 24).
+Node 18+.
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
+npm run dev       # http://localhost:5173 — UI only, /api/* returns 404
+vercel dev        # UI + the serverless functions (needed for extraction, 889, US Bank)
 ```
-
-Other scripts:
 
 ```bash
-npm run build        # type-check + production build to dist/
-npm run preview      # serve the production build locally
-npm test             # run the parseReceipt unit tests (Vitest)
-npm run gen:logo     # regenerate the logo assets in public/ (only if the source mark changes)
+npm run build     # type-check + production build to dist/
+npm test          # 94 unit tests (parser, extraction, US Bank mapping, 889)
+npm run typecheck
 ```
 
----
+Copy `.env.example` → `.env.local` and fill it in. Every `VITE_`-prefixed value
+is **inlined into the browser bundle** — secrets never carry that prefix.
 
-## Deploy to Vercel (zero configuration)
+| Variable | Side | Purpose |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | client | auth + per-user storage |
+| `VITE_CLOUD_EXTRACTION` | client | `true` routes extraction to Textract first |
+| `TEXTRACT_REGION`, `TEXTRACT_ACCESS_KEY_ID`, `TEXTRACT_SECRET_ACCESS_KEY` | **server** | AWS creds for `/api/extract`. Not named `AWS_*` — Lambda reserves those |
+| `VITE_USBANK_ENABLED`, `VITE_USBANK_APP_URL` | client | show the order handoff card + link |
+| `USBANK_API_BASE` | **server** | base URL the `/api/usbank-order` proxy talks to |
+| `VITE_SSO_ALLOWED_ORIGINS` | client | origins allowed to receive a "Sign in with Nexus" token |
 
-The live demo needs **no env vars and no server**.
-
-1. Push this repo to GitHub/GitLab/Bitbucket.
-2. In Vercel, **New Project → import the repo**. The Vite preset is detected
-   automatically (build `npm run build`, output `dist`).
-3. **Deploy.** That's it — the live URL works entirely client-side.
-
-`vercel.json` contains only an SPA rewrite (all routes → `index.html`) so deep
-links like `/records/<id>` resolve.
-
-**Build gotchas — already handled and verified:**
-
-- **pdfjs worker:** imported with Vite's `?url` suffix
-  (`pdfjs-dist/build/pdf.worker.min.mjs?url`), so the worker file always matches
-  the installed version and is emitted as a hashed asset in both `dev` and the
-  production build.
-- **Tesseract.js:** its worker, WASM core, and language data (`eng+deu`) are
-  fetched from a CDN on first use and cached by the browser thereafter. No
-  bundling config required. The production build was verified to serve all
-  assets (not just `dev`).
+Run [`supabase/migrations/`](supabase/migrations/) in the Supabase SQL editor
+once, in order. They create the `records` table and the private `receipts`
+bucket, both under owner-only Row-Level Security.
 
 ---
 
-## How to test
+## How it works
 
-**With the seeded samples (fastest):**
+**Flow.** `/scan` upload → extraction → `/review` correct + attach documents →
+`/records/:id` saved record → "Create, match & attach in US Bank".
 
-- On **Home** you'll see the time-saved counter and recent records already
-  populated.
-- Go to **Scan / Upload → "Or try a sample document"** and pick any of the four.
-  Each runs through the real pipeline (mock canned text for the samples), lands
-  on the **Review** screen with fields auto-filled and the capture timer
-  running, and saves to **Records**.
+**Extraction** ([`core/extraction/`](src/core/extraction/)) — the router picks
+the engine; the UI never knows which one ran.
 
-**With a real document (proves the OCR/PDF paths):**
+1. **Cloud first** (when enabled) → AWS Textract `AnalyzeExpense` via
+   [`/api/extract`](api/extract.ts). Reads documents by layout, so it assigns
+   vendor / total / tax / line items far more reliably than regex.
+2. **Automatic local fallback** — native PDF → real text layer (`pdfjs-dist`,
+   instant and exact); scanned PDF → rasterize page 1 at ~300dpi → OCR; image →
+   canvas preprocessing (grayscale → upscale → contrast → Otsu binarize) →
+   Tesseract.js in WebAssembly, on-device.
+3. Failure surfaces an error. It never fabricates a result.
 
-- **A real receipt photo (image):** Scan / Upload → drop a JPG/PNG of a receipt
-  → **Extract**. Watch the "reading…" progress; this is Tesseract running
-  locally. Quality depends heavily on lighting/skew — that's expected, and the
-  review screen is where you correct it. _First run downloads the OCR model
-  (~a few MB) from a CDN; subsequent runs are cached._
-- **A real text-based PDF (vendor quote/invoice):** Scan / Upload → choose a
-  PDF that was generated digitally (not a scan) → **Extract**. It should be
-  near-instant and exact, and the record is tagged **"PDF text layer."**
-- Verify **search/filter** on Records, **edit/delete** and **status
-  transitions** on Record Detail, **Copy summary / Copy JSON / Download JSON**,
-  and that everything **persists across a page reload**.
+**Field parsing** ([`parseReceipt.ts`](src/core/parseReceipt.ts)) — pure and
+unit-tested. US and EU number formats, three date formats, EN/DE keywords.
+Cloud fields win; the parser fills gaps. **Design rule throughout: a blank the
+reviewer fills beats a confident wrong value.**
 
-To reset the demo to a clean seeded state, clear the site's storage
-(DevTools → Application → Clear storage) and reload.
+Vendor gets three layers of defense, because scanned thermal receipts carry
+mirrored bleed-through from the back of the paper that OCRs as gibberish
+*above* the real header: a server-side blacklist + shape check + OCR
+corroboration gate ([`textractPostProcessor.ts`](api/textractPostProcessor.ts)),
+a client-side contact-block anchor, and deterministic overrides for vendors
+whose storefront banner is an unreadable logo
+([`knownVendors.ts`](src/core/knownVendors.ts)).
 
----
+**Compliance.**
 
-## What is real vs. mocked
+- **Mandatory Authorization Directory**
+  ([`mandatoryAuth.ts`](src/core/mandatoryAuth.ts)) — the Ramstein 700 CONS GPC
+  listing as data: 22 item categories with match keywords, the required
+  approval, the approving authority + DSN, and the DAFI 64-117 reference, plus
+  the >$5,000 equipment rule. Detection is a keyword match the reviewer
+  corrects. Each confirmed category adds a document slot the order must carry.
+- **Section 889** — [`/api/889-search`](api/889-search.ts) proxies the GSA
+  SmartPay 889 tool (openGSA SAM.gov Entity Management API). The cardholder
+  confirms the entity; the determination is snapshotted onto the record and a
+  "Record of Section 889 Representations" PDF is generated for the order file.
+  Nexus never decides compliance — it surfaces what the vendor represented
+  under FAR 52.204-26(c).
+- **US Bank required fields** ([`usbankOrder.ts`](src/lib/usbankOrder.ts)) —
+  every red-asterisk Create-Order dropdown, in US Bank's exact option strings,
+  seeded to the standard GPC answer and blocked on save if empty.
 
-| Capability | Status |
-| --- | --- |
-| Native-PDF text extraction (`pdfjs-dist`) | **Real** |
-| Image preprocessing + Tesseract.js OCR | **Real**, in-browser |
-| Field parser (`parseReceipt`) | **Real**, pure + unit-tested |
-| Capture timer + time-saved math | **Real**, measured |
-| Local persistence (localStorage + IndexedDB) | **Real** |
-| Export (structured text + JSON) | **Real** |
-| Mock provider / seeded samples | **Mocked** (canned text, scrubbed values) |
-| Handwritten VAT-form extraction | **Mocked** — open-source OCR reads handwriting poorly, so the sample is backed by mock text + explicit fields. Flagged as an upgrade-tier capability. |
-| Scanned PDF (no text layer) | Falls back to **mock** in Sprint 1 (rasterize-then-OCR is a Sprint 2 item) |
-| Cloud extractor (`cloudExtractionService`) | **Stub only** — documented, not implemented |
-| US Bank / PIEE / gov login / submission | **Not built** (by design) |
+**US Bank handoff** ([`api/usbank-order.ts`](api/usbank-order.ts)) — one button
+runs SSO token exchange → create order → match to the statement line the clone
+spawns → upload the audit summary, receipt, and every attachment. Proxied
+server-side because the clone has no CORS and no token belongs in the browser.
 
-### Data handling / PII
-
-The real source documents contain PII (names, `.mil` emails, CAGE codes, card
-last-4). **All seeded demo data uses scrubbed/synthetic values** — see
-`src/core/extraction/mockService.ts` and `src/data/sampleData.ts`. Because
-Sprint 1 is fully client-side, **no document ever leaves the browser**; the only
-network fetch is the open-source OCR model from a CDN (the document is processed
-locally). This client-side privacy posture is a genuine advantage of the
-open-source path.
+**Identity and storage.** Supabase email/password, plus a guest mode with no
+backend session (a `sessionStorage` flag that dies with the tab). Authenticated
+sessions store rows in Postgres and images in a private bucket; guests stay in
+`localStorage` + IndexedDB and nothing is uploaded. **Scoping is enforced by
+Row-Level Security, not by the client** — the route guard is UX only. Images
+are served as one-hour signed URLs.
 
 ---
 
@@ -145,91 +113,44 @@ open-source path.
 
 ```
 src/
-  core/                         UI-free, platform-agnostic (reusable by a future iOS shell)
-    types.ts                    domain model
-    parseReceipt.ts (+ .test)   raw text -> fields (the primary structurer)
-    preprocessImage.ts          canvas grayscale/upscale/contrast/binarize
-    storage.ts                  RecordStore interface
-    extraction/
-      extractionService.ts      the swappable engine interface
-      pdfTextService.ts         native-PDF text layer        (real)
-      tesseractService.ts       preprocessing + OCR          (real)
-      mockService.ts            canned results + sample text (mock)
-      cloudExtractionService.ts INTERFACE STUB ONLY          (Sprint 2)
-      extractionRouter.ts       pdf-text -> tesseract -> mock
-  storage/webStorage.ts         web impl (localStorage + IndexedDB)
-  data/                         scrubbed sample records + generated SVG thumbnails
-  lib/                          formatting, time-saved math, export, pdf thumbnail
+  core/            UI-free, platform-agnostic (reusable by a future iOS shell)
+    types.ts             domain model
+    draft.ts             ExtractionResult -> ReviewDraft -> PurchaseRecord
+    parseReceipt.ts      raw text -> fields
+    mandatoryAuth.ts     700 CONS authorization directory as data
+    knownVendors.ts      deterministic vendor overrides
+    preprocessImage.ts   canvas grayscale/upscale/contrast/binarize
+    storage.ts           RecordStore interface
+    extraction/          the swappable engine seam + router
+  storage/         webStorage (local) | supabaseStore (cloud)
+  auth/            AuthContext + Supabase provider behind one interface
+  lib/             US Bank mapping, 889 mapping + PDF, export, formatting
   components/  screens/  store.tsx
+api/               Vercel serverless: extract, 889-search, usbank-order
+supabase/migrations/     schema + RLS policies
 ```
 
-The router calls whichever `ExtractionService` fits the input; **the UI never
-knows which engine ran.** That seam is the whole point: a cloud extractor drops
-in behind the same `extract()` signature without touching a single screen.
-
-The **core/** and **storage interface** are deliberately UI-free so a future
-Expo / React Native shell can reuse them; only `webStorage.ts`,
-`preprocessImage` (canvas), and `pdfThumbnail` are web-specific.
-
----
-
-## Upgrade path — cloud extraction (Sprint 2, **not built now**)
-
-When accuracy needs to jump — especially for faded thermal receipts and the
-handwritten NATO SOFA *Abwicklungsschein* VAT-relief forms — implement
-`cloudExtractionService` behind a **`/api/extract` Vercel serverless function**:
-
-```
-client ──ExtractionService.extract()──▶ /api/extract (serverless)
-                                            │ holds the provider key in
-                                            ▼ Vercel env vars (client never sees it)
-                                         AWS Textract  AnalyzeExpense
-```
-
-**Lead option: AWS Textract `AnalyzeExpense`.** Purpose-built for
-receipts/invoices; returns normalized vendor/total/tax/date + line items (so it
-populates `fields` directly and `parseReceipt` becomes a fallback), handles
-handwriting, and — decisive for a government tool — has **FedRAMP High in AWS
-GovCloud and a DoD Impact Level path.** A vision LLM is the more flexible
-alternative but has a weaker compliance story for real PII. The client keeps
-calling `extractionService`; only the function carries the secret.
+`core/` and the storage interface are deliberately UI-free so an Expo / React
+Native shell can reuse them; only `webStorage`, `preprocessImage`, and the PDF
+rasterizer are web-specific.
 
 ---
 
 ## Limitations
 
-- **Handwriting / forms:** open-source OCR reads these poorly; the VAT-form
-  sample is mock-backed. This is the strongest case for the cloud upgrade.
-- **Thermal/scanned image accuracy** varies with photo quality; preprocessing
-  helps but is not magic. Review-and-correct is the intended workflow.
-- **Scanned PDFs** (image-only, no text layer) fall back to mock — no
-  rasterize-then-OCR yet.
-- **Line-item parsing** is conservative (under-extracts on purpose).
-- **Deskew** is intentionally omitted from preprocessing (lowest-yield,
-  artefact-prone).
-- **Camera capture** uses the native file input's `capture` hint rather than a
-  full `getUserMedia` viewfinder.
-- Storage is per-browser/per-device (no sync).
-
----
-
-## What Sprint 2 should be
-
-1. **Cloud extractor** behind `cloudExtractionService` via `/api/extract`
-   (AWS Textract `AnalyzeExpense` as the lead), **benchmarked** against the
-   open-source path on the sample set.
-2. **Richer line-item + VAT-form extraction** (incl. the handwritten forms).
-3. A **real document-upload + checklist flow** (multiple docs per record).
-4. An optional **Expo / iOS shell** reusing `core/` and the storage interface.
-5. A polished **"export package"** for manual entry.
-
-Still **no** live US Bank / PIEE integration.
-
----
+- **Handwriting / VAT-relief forms** (NATO SOFA *Abwicklungsschein*) are the
+  weakest path even with Textract.
+- **Scanned PDFs: page 1 only.** Multi-page scanned invoices need a loop.
+- **Thermal receipt accuracy** varies with photo quality. Review-and-correct is
+  the intended workflow, not an admission of failure.
+- **Line-item parsing under-extracts on purpose.**
+- The **Spend Analysis** option list is truncated to what was legible in the
+  source screenshot.
+- Mandatory-authorization detection is a keyword match, not a classifier.
+- Guest storage is per-browser, per-device, no sync.
 
 ## Tech
 
-React + Vite + TypeScript · `pdfjs-dist` · `tesseract.js` · React Router ·
-Vitest. Typography: IBM Plex Sans (UI) + IBM Plex Mono (data/readouts). Design:
-"calm dark, audit-ready" warm charcoal, one restrained green reserved for
-validation, cream as the single bold fill (echoes the hawk mark).
+React 18 · Vite · TypeScript · React Router · Supabase · AWS Textract ·
+`pdfjs-dist` · `tesseract.js` · jsPDF · Vitest. Type: IBM Plex Sans + IBM Plex
+Mono.

@@ -81,6 +81,32 @@ function writeIndex(records: PurchaseRecord[]): void {
 // Object-URL cache so the same blob isn't re-materialized on every render.
 const objectUrlCache = new Map<string, string>();
 
+/**
+ * Wipe every local record AND its stored blobs. Clearing only the localStorage
+ * index would leave the receipt images orphaned in IndexedDB — invisible, but
+ * still on the device, which is not what "clear my data" means.
+ */
+export async function clearLocalStore(): Promise<void> {
+  try {
+    localStorage.removeItem(RECORDS_KEY);
+  } catch {
+    /* ignore */
+  }
+  for (const url of objectUrlCache.values()) URL.revokeObjectURL(url);
+  objectUrlCache.clear();
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(IMAGE_STORE, "readwrite");
+      tx.objectStore(IMAGE_STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 export const webStorage: RecordStore = {
   async listRecords() {
     return readIndex().sort((a, b) => b.createdAt.localeCompare(a.createdAt));

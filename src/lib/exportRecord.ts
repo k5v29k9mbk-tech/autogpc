@@ -36,7 +36,7 @@ export function toStructuredText(record: PurchaseRecord): string {
   const lines: string[] = [];
 
   lines.push("AUTOGPC - Structured purchase summary");
-  lines.push("For manual GPC / US Bank entry. AutoGPC does not submit anything.");
+  lines.push("For manual GPC / US Bank entry.");
   lines.push("");
   const pair = (label: string, value: string) => `${label.padEnd(18)}${value}`;
   lines.push(pair("Vendor:", orDash(record.vendor)));

@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { Route, Routes } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { Route, Routes, useLocation } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { RequireSession } from "./components/RequireSession";
 
@@ -37,9 +37,40 @@ const SsoAuthorize = lazy(() =>
 );
 const Terms = lazy(() => import("./screens/Terms").then((m) => ({ default: m.Terms })));
 
+// Tab titles, in one table rather than an effect per screen. Longest matching
+// prefix wins, so /records/:id gets the record title. Everything is "Nexus".
+const TITLES: [prefix: string, label: string][] = [
+  ["/scan", "Scan"],
+  ["/review", "Review"],
+  ["/records", "Records"],
+  ["/account", "Account"],
+  ["/settings", "Settings"],
+  ["/support", "Support"],
+  ["/login", "Sign in"],
+  ["/create-account", "Create account"],
+  ["/forgot-password", "Reset password"],
+  ["/auth/reset", "Reset password"],
+  ["/auth/callback", "Signing in"],
+  ["/sso/authorize", "Authorize"],
+  ["/terms", "Terms"],
+  ["/marketing", "Government Purchase Card automation"],
+];
+
+function PageTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const hit = TITLES.filter(([p]) => pathname === p || pathname.startsWith(p + "/")).sort(
+      (a, b) => b[0].length - a[0].length,
+    )[0];
+    document.title = hit ? `${hit[1]} · Nexus` : "Nexus";
+  }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <Suspense fallback={<div className="muted" style={{ padding: "var(--s6)" }}>Loading…</div>}>
+      <PageTitle />
       <Routes>
         {/* Pre-app auth screens — full-screen, outside the app shell. */}
         <Route path="login" element={<Login />} />

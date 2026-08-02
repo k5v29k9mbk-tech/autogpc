@@ -6,6 +6,7 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import { useAuth } from "../auth";
+import { clearLocalStore } from "../storage/webStorage";
 import {
   IconBell,
   IconCheck,
@@ -218,9 +219,9 @@ export function Settings() {
             className="btn btn-ghost"
             onClick={() => {
               if (confirm("Clear locally cached scans and preferences on this device?")) {
-                clearLocalCache();
-                setPrefs(DEFAULT_PREFS);
-                setSavedAt(Date.now());
+                // Reload so the record list can't keep showing what was just
+                // deleted — the store loaded it before the wipe.
+                void clearLocalCache().then(() => location.reload());
               }
             }}
           >
@@ -307,8 +308,8 @@ function exportData(email: string | null) {
   URL.revokeObjectURL(url);
 }
 
-/** Wipe app-owned localStorage keys (prefs + any cached scans). */
-function clearLocalCache() {
+/** Wipe app-owned localStorage keys (prefs + any cached scans) and the blobs. */
+async function clearLocalCache() {
   try {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith("nexus.")) localStorage.removeItem(key);
@@ -316,4 +317,5 @@ function clearLocalCache() {
   } catch {
     // best-effort
   }
+  await clearLocalStore();
 }

@@ -8,6 +8,7 @@ import {
   parseTax,
   parseCardLast4,
   parseVendor,
+  parseLineItems,
   parseInvoiceNumber,
   parseReceiptNumber,
 } from "./parseReceipt";
@@ -146,6 +147,32 @@ describe("parseVendor", () => {
   it("ignores no-name thank-you footers", () => {
     const raw = ["United Office Solutions", "PHONE: 555-1212", "Thank you for shopping with us!"].join("\n");
     expect(parseVendor(raw)).toBe("United Office Solutions");
+  });
+});
+
+describe("parseLineItems", () => {
+  it("reads single-space rows and rows carrying a tax-class flag", () => {
+    const items = parseLineItems(
+      [
+        "SHOP VAC 12GAL 29.97 N",
+        "EXT CORD 25FT  8.98 T",
+        "SAFETY GLASSES 12.47",
+        "GRUB SCREW 6 @ 4.25 25.50",
+        "Subtotal 76.92",
+        "TOTAL 76.92",
+        "Trans Disc -2.00",
+        "03/14/2026 88.12",
+      ].join("\n"),
+    );
+    expect(items.map((i) => [i.description, i.total])).toEqual([
+      ["SHOP VAC 12GAL", "29.97"],
+      ["EXT CORD 25FT", "8.98"],
+      ["SAFETY GLASSES", "12.47"],
+      ["GRUB SCREW", "25.50"],
+    ]);
+    // The qty row is the only one that can state a unit price.
+    expect(items[3].quantity).toBe("6");
+    expect(items[3].unitPrice).toBe("4.25");
   });
 });
 

@@ -59,10 +59,6 @@ export function Landing() {
   const panelRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | undefined>(undefined);
 
-  useEffect(() => {
-    document.title = "AutoGPC — Government Purchase Card automation";
-  }, []);
-
   // Pipeline cycle
   useEffect(() => {
     if (prefersReduced()) return;
@@ -396,8 +392,8 @@ export function Landing() {
             </Link>
             <p className="lp-footer-disclaimer">
               AutoGPC is an independent automation tool. It is not affiliated with or endorsed by
-              U.S. Bank, PIEE, or any government agency, and does not submit to any government system.
-              Demonstration software.
+              U.S. Bank, PIEE, or any government agency, and does not connect to real U.S. Bank or
+              government systems. Demonstration software.
             </p>
           </div>
           <nav className="lp-footer-links" aria-label="Footer">

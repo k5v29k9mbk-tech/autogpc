@@ -322,7 +322,8 @@ export function RecordDetail() {
         </div>
         <pre className="code">{toStructuredText(record)}</pre>
         <p className="muted" style={{ fontSize: 12, marginTop: "var(--s3)" }}>
-          Documents present: {present.length ? present.join(", ") : "none"} · missing: {missing.length ? missing.join(", ") : "none"}. AutoGPC never submits this anywhere.
+          Documents present: {present.length ? present.join(", ") : "none"} · missing: {missing.length ? missing.join(", ") : "none"}. Copy this for manual entry — nothing is
+          submitted from here.
         </p>
       </div>
 

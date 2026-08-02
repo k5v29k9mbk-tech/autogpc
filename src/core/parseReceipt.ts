@@ -357,7 +357,10 @@ export function parseLineItems(text: string): LineItem[] {
     .filter((l) => l.length > 0);
   const items: LineItem[] = [];
   const qtyRow = /^(.{2,48}?)\s+(\d{1,4})\s*[xX@]\s*([€$£]?\s*[\d.,]+)\s+([€$£]?\s*[\d.,]+)$/;
-  const simpleRow = /^(.{3,48}?)\s{2,}([€$£]?\s*\d[\d.,]*[.,]\d{2})$/;
+  // A single space is enough: OCR collapses the printed column gap, so
+  // requiring two dropped most real rows. The optional trailing letters are the
+  // tax-class flag receipts print after the price ("29.97 N", "8.98 T").
+  const simpleRow = /^(.{3,48}?)\s+([€$£]?\s*\d[\d.,]*[.,]\d{2})\s*[A-Z]{0,2}$/;
 
   for (const line of lines) {
     if (/\b(sub)?total|tax|vat|mwst|balance|amount\s*due|summe|gesamt|change|tender|cash|card/i.test(line)) {
@@ -378,7 +381,10 @@ export function parseLineItems(text: string): LineItem[] {
       continue;
     }
     const s = line.match(simpleRow);
-    if (s) {
+    // A description with no letters is a stray numeric line (date, reference,
+    // register code), not a purchase — the single-space rule above admits those
+    // where the old two-space rule couldn't.
+    if (s && /[A-Za-z]/.test(s[1])) {
       items.push({
         description: s[1].trim(),
         quantity: null,

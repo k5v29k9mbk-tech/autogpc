@@ -26,34 +26,48 @@ export function Scan() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [isPdf, setIsPdf] = useState(false);
+  const [thumbing, setThumbing] = useState(false);
   const [working, setWorking] = useState(false);
   const [progress, setProgress] = useState<ExtractionProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  // Rasterizing a PDF page takes seconds. Without this, picking a second
+  // document before the first one's thumbnail lands lets the stale render
+  // overwrite the preview — and the record then saves the PREVIOUS document's
+  // image against the new document's fields. Every pick takes a ticket; a
+  // superseded render throws its result away.
+  const pickSeq = useRef(0);
+
   const onFiles = useCallback(async (f: File | null) => {
     if (!f) return;
+    const seq = ++pickSeq.current;
     setError(null);
     setFile(f);
     const pdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
     setIsPdf(pdf);
+    setPreviewUrl(null);
+    // The source file is the document of record until a thumbnail replaces it,
+    // so a PDF we can't rasterize is still saved and still uploads.
+    setPreviewBlob(f);
 
-    if (pdf) {
-      setPreviewUrl(null);
-      try {
-        const thumb = await renderPdfThumbnail(f);
-        if (thumb) {
-          setPreviewBlob(thumb);
-          setPreviewUrl(URL.createObjectURL(thumb));
-        } else {
-          setPreviewBlob(f);
-        }
-      } catch {
-        setPreviewBlob(f);
-      }
-    } else {
-      setPreviewBlob(f);
+    if (!pdf) {
       setPreviewUrl(URL.createObjectURL(f));
+      return;
+    }
+
+    setThumbing(true);
+    try {
+      const thumb = await renderPdfThumbnail(f);
+      if (seq !== pickSeq.current) return; // superseded by a newer pick
+      if (thumb) {
+        setPreviewBlob(thumb);
+        setPreviewUrl(URL.createObjectURL(thumb));
+      }
+    } catch {
+      /* keep the PDF itself as the stored document */
+    } finally {
+      if (seq === pickSeq.current) setThumbing(false);
     }
   }, []);
 
@@ -72,7 +86,9 @@ export function Scan() {
       setDraft(
         draftFromResult(result, {
           imageUri: previewUrl ?? "",
-          imageBlob: previewUrl ? previewBlob : null,
+          // Not gated on previewUrl: a PDF with no renderable thumbnail still
+          // has to be stored, or the record saves with no document at all.
+          imageBlob: previewBlob,
           captureStartedAt: begin,
         }),
       );
@@ -132,7 +148,9 @@ export function Scan() {
               ) : (
                 <div className="preview-img row" style={{ justifyContent: "center", flexDirection: "column", gap: "var(--s2)", minHeight: 240 }}>
                   <IconFile width={32} height={32} />
-                  <span className="muted">Preparing preview…</span>
+                  <span className="muted">
+                    {thumbing ? "Preparing preview…" : "No preview — the file is attached as-is."}
+                  </span>
                 </div>
               )}
             </div>
@@ -183,9 +201,11 @@ export function Scan() {
                   <button
                     className="btn btn-ghost"
                     onClick={() => {
+                      pickSeq.current++; // discard any thumbnail still rendering
                       setFile(null);
                       setPreviewUrl(null);
                       setPreviewBlob(null);
+                      setThumbing(false);
                       setError(null);
                     }}
                   >
