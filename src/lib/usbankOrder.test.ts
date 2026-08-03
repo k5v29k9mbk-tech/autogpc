@@ -20,7 +20,18 @@ function record(over: Partial<PurchaseRecord> = {}): PurchaseRecord {
     notes: "",
     requestorName: "Jordan Reyes",
     emergencyTypeOperation: "Not in support of ETO",
-    designation889: null,
+    designation889: "889 Merchant Rep",
+    usBank: {
+      specialPreApproval: "No Items Require Special Approvals",
+      delegatedProcurementAuthority: "Micro-Purchase CH",
+      prePurchaseApprovals: "None Required",
+      section508Consideration: "No Item(s) in Order are Subject to 508 Requirement",
+      requestToPurchaseReceived: "Self-Generated Purchase",
+      spendAnalysis: "Office Supplies",
+      requiredSourceScreened: "Purchased from Required Source",
+      finalDeliveryOutsideUs: "No",
+      lineItemTax: "1.20",
+    },
     section889: null,
     rawOcrText: "",
     imageUri: "",
@@ -65,6 +76,37 @@ describe("toUsBankOrder", () => {
     ]);
     // ETO is now a selector with a default, so only the 889 set-up note remains.
     expect(warnings).toEqual([expect.stringContaining("889")]);
+  });
+
+  it("sends the reviewer's order fields under the clone's own key names", () => {
+    const { payload } = toUsBankOrder(record(), { requestorName: "Jordan Reyes" });
+    // Anything missing from the body renders as the literal "null" on the
+    // clone's order page — this is the whole point of the mapping.
+    expect(payload).toMatchObject({
+      specialPreApproval: "No Items Require Special Approvals",
+      delegatedAuthority: "Micro-Purchase CH",
+      prePurchApprovals: "None Required",
+      section508: "No Item(s) in Order are Subject to 508 Requirement",
+      requestToPurchase: "Self-Generated Purchase",
+      spendAnalysis: "Office Supplies",
+      requiredSource: "Purchased from Required Source",
+      finalDelivery: "No",
+      designation889: "889 Merchant Rep",
+      totalTax: "0.00",
+      lineItemTax: "1.20",
+      sourceCurrency: "U.S. Dollar",
+    });
+  });
+
+  it("passes a non-USD receipt's currency through as the source currency", () => {
+    const { payload } = toUsBankOrder(record({ currency: "eur" }), { requestorName: "X" });
+    expect(payload.sourceCurrency).toBe("EUR");
+  });
+
+  it("warns when a legacy record has no order fields at all", () => {
+    const { payload, warnings } = toUsBankOrder(record({ usBank: null }), { requestorName: "X" });
+    expect(payload.spendAnalysis).toBe("");
+    expect(warnings.some((w) => w.includes("predates"))).toBe(true);
   });
 
   it("warns when the requestor name is missing (API requires it)", () => {
