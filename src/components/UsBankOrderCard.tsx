@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from "react";
 import { toUsBankOrder } from "../lib/usbankOrder";
-import { submitUsBankOrder, type CreatedOrder } from "../lib/usbankClient";
+import { submitUsBankOrder, usBankOrderUrl, type CreatedOrder } from "../lib/usbankClient";
 import { buildUsBankDocuments } from "../lib/usbankDocuments";
 import { missingRequiredDocs } from "../core/mandatoryAuth";
 import { formatAmount } from "../lib/format";
@@ -19,19 +19,6 @@ import { Section889Field } from "./Section889Field";
 import { IconAlert, IconCheck } from "./icons";
 
 export const USBANK_ENABLED = import.meta.env.VITE_USBANK_ENABLED === "true";
-const APP_URL = import.meta.env.VITE_USBANK_APP_URL;
-
-/** Deep link to the order in the clone's Access Online UI. The clone routes on
- *  the hash (`#/orders/view/<controlNumber>`), so drop whatever hash the env var
- *  carries and address the order itself — `#/orders` is not a route and silently
- *  falls back to the dashboard, which is why an order looked unreachable. */
-export function usBankOrderUrl(controlNumber?: string): string | null {
-  if (!APP_URL) return null;
-  const base = String(APP_URL).split("#")[0];
-  return controlNumber
-    ? `${base}#/orders/view/${encodeURIComponent(controlNumber)}`
-    : `${base}#/orders/manage`;
-}
 
 export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   const { user, getAccessToken } = useAuth();

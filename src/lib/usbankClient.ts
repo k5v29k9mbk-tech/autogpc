@@ -8,6 +8,23 @@ import type { UsBankOrderPayload } from "./usbankOrder";
 
 export type UsBankDocument = { filename: string; contentType: string; dataBase64: string };
 
+/**
+ * Deep link into the clone's Access Online UI. It routes on the hash, so drop
+ * whatever hash VITE_USBANK_APP_URL carries and address the order itself.
+ * `#/orders` is NOT one of its routes — it falls through to the dashboard,
+ * which is why a created order looked unreachable. Order list: `#/orders/manage`.
+ */
+export function usBankOrderUrl(
+  controlNumber?: string,
+  appUrl: string | undefined = import.meta.env.VITE_USBANK_APP_URL,
+): string | null {
+  if (!appUrl) return null;
+  const base = appUrl.split("#")[0];
+  return controlNumber
+    ? `${base}#/orders/view/${encodeURIComponent(controlNumber)}`
+    : `${base}#/orders/manage`;
+}
+
 export type CreatedOrder = {
   controlNumber: string;
   merchantName: string;
