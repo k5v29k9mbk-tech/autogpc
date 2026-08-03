@@ -246,6 +246,44 @@ describe("parseLineItems", () => {
     ).toEqual([]);
   });
 
+  // Thermal OCR reads the "@" multiplier as a bare letter as often as not. That
+  // letter used to carry the whole column line past the letters guard, so the
+  // review screen showed one row described as "10 a 2.78 =" priced at the
+  // extended total — and the three real items were nowhere.
+  it("reads a multi-item receipt whose @ multiplier OCR'd as a letter", () => {
+    const rows = [
+      "Sporting Goods",
+      "833092 MUT Black Mal 037447009914",
+      "2 a 162.00 = 360.00",
+      "AGE VERIFIED? YES",
+      "UNIT CHARGE (€10.00)",
+      "Trans Disc. -36.00",
+      "YOUR REFUND VALUE 324.00",
+      "Hardware",
+      "RZR BLADE SC 076174285000",
+      "10 a 2.78 = 30.90",
+      "STL RAZOR BL 076174285109",
+      "10 a 1.88 = 20.90",
+      "TOTAL a 370.62",
+      "MasterCard 370.62",
+    ].join("\n");
+    const expected = [
+      { description: "833092 MUT Black Mal 037447009914", quantity: "2", unitPrice: "162.00", total: "360.00" },
+      { description: "RZR BLADE SC 076174285000", quantity: "10", unitPrice: "2.78", total: "30.90" },
+      { description: "STL RAZOR BL 076174285109", quantity: "10", unitPrice: "1.88", total: "20.90" },
+    ];
+    expect(parseLineItems(rows)).toEqual(expected);
+    // Same receipt, multiplier read correctly — must parse identically.
+    expect(parseLineItems(rows.replace(/ a /g, " @ "))).toEqual(expected);
+  });
+
+  it("never turns an orphaned column line into a row of its own", () => {
+    // Description lost to the confidence floor: the arithmetic must not become
+    // the item. A lone letter is a misread "@", not a word.
+    expect(parseLineItems("10 a 2.78 = 30.90")).toEqual([]);
+    expect(parseLineItems("2 @ 162.00 = 360.00")).toEqual([]);
+  });
+
   it("consumes the number line exactly once", () => {
     const items = parseLineItems(
       ["WIDGET 12345678", "1 0 40.45 = 44.95", "EXTCORD ORNG 50FT 14.99"].join("\n"),

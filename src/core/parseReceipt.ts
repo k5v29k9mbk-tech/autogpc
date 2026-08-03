@@ -392,6 +392,17 @@ export function parseLineItems(text: string): LineItem[] {
     /\b(auth|authorization|merchant|terminal|store|reg|register|trans|transaction|invoice|order|acct|account|phone|tel|fax|member|survey|batch|seq|ref|receipt|code|id)\b|\d{1,2}[:/.]\d{2}/i;
   const columnsRow = /^\d{1,4}[\s\d.,=@xX*-]*\d[.,]\d{2}$/;
   const money = /\d[\d.,]*[.,]\d{2}/g;
+  // OCR reads the "@" multiplier as a stray letter about as often as it reads
+  // it correctly — "10 a 2.78 =" and "2 à 162.00 =" are both the printed
+  // "@" — so a lone one-letter token between numbers is normalized back before
+  // the column test. Without this the whole row is invisible to columnsRow, and
+  // the letter is exactly what then smuggles the line past the word guard below
+  // as a line item named "10 a 2.78 =".
+  const asColumns = (l: string) => l.replace(/(?<=^|\s)[A-Za-zÀ-ÿ](?=\s|$)/g, "@");
+  // A real description contains a real word. A single stray letter does not:
+  // that is the misread multiplier, and admitting it invents a row whose
+  // description is the arithmetic and whose total is the extended price.
+  const hasWord = /[A-Za-zÀ-ÿ]{2,}/;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -413,10 +424,11 @@ export function parseLineItems(text: string): LineItem[] {
       continue;
     }
     const s = line.match(simpleRow);
-    // A description with no letters is a stray numeric line (date, reference,
-    // register code), not a purchase — the single-space rule above admits those
-    // where the old two-space rule couldn't.
-    if (s && /[A-Za-z]/.test(s[1])) {
+    // A description with no real word in it is a stray numeric line (date,
+    // reference, register code, or a qty/price column set whose "@" OCR'd as a
+    // letter), not a purchase — the single-space rule above admits those where
+    // the old two-space rule couldn't.
+    if (s && hasWord.test(s[1] ?? "")) {
       items.push({
         description: s[1].trim(),
         quantity: null,
@@ -429,7 +441,7 @@ export function parseLineItems(text: string): LineItem[] {
     // two-line row. The number line reads left to right as
     // "qty ... unitPrice ... extended", so the last amount is the row total and
     // the leading integer is the quantity ("1 0 40.45 = 44.95").
-    const next = lines[i + 1] ?? "";
+    const next = asColumns(lines[i + 1] ?? "");
     if (!catalogRow.test(line) || footerIdRow.test(line) || !columnsRow.test(next)) continue;
     const amounts = next.match(money) ?? [];
     if (amounts.length < 2) continue;
