@@ -31,6 +31,13 @@ function record(over: Partial<PurchaseRecord> = {}): PurchaseRecord {
       requiredSourceScreened: "Purchased from Required Source",
       finalDeliveryOutsideUs: "No",
       lineItemTax: "1.20",
+      merchantAddress: "Flugplatz 1",
+      merchantCity: "Ramstein",
+      merchantState: "RP",
+      merchantPostal: "66877",
+      shipCity: "",
+      shipState: "",
+      shipPostal: "",
     },
     section889: null,
     rawOcrText: "",
@@ -95,7 +102,24 @@ describe("toUsBankOrder", () => {
       totalTax: "0.00",
       lineItemTax: "1.20",
       sourceCurrency: "U.S. Dollar",
+      merchantAddress: "Flugplatz 1",
+      merchantCity: "Ramstein",
+      merchantState: "RP",
+      merchantPostal: "66877",
     });
+  });
+
+  it("carries the extracted SKU onto the line item", () => {
+    const { payload } = toUsBankOrder(
+      record({ lineItems: [{ description: "TAC SLING PK", quantity: "1", unitPrice: "22.46", total: "22.46", productCode: "014421091226" }] }),
+      { requestorName: "X" },
+    );
+    expect(payload.lineItems[0].productCode).toBe("014421091226");
+  });
+
+  it("falls back to the receipt id for Invoice # (where Textract files it)", () => {
+    const { payload } = toUsBankOrder(record({ receiptNumber: "R-4471" }), { requestorName: "X" });
+    expect(payload.invoice).toBe("R-4471");
   });
 
   it("passes a non-USD receipt's currency through as the source currency", () => {

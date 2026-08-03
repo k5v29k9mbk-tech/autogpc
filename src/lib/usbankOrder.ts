@@ -47,6 +47,13 @@ export type UsBankOrderDetails = {
   lineItemTax: string;
   sourceCurrency: string;
   invoice: string;
+  merchantAddress: string;
+  merchantCity: string;
+  merchantState: string;
+  merchantPostal: string;
+  shipCity: string;
+  shipState: string;
+  shipPostal: string;
 };
 
 /** Exactly what POST /api/orders accepts. */
@@ -216,7 +223,7 @@ function toNumber(s: string | null | undefined): number | null {
 
 function mapLineItem(li: LineItem): UsBankLineItem {
   return {
-    productCode: null,
+    productCode: li.productCode ?? null,
     description: li.description.trim(),
     qty: toNumber(li.quantity),
     unitCost: toNumber(li.unitPrice),
@@ -290,7 +297,16 @@ export function toUsBankOrder(
     lineItemTax: ub?.lineItemTax ?? "0.00",
     // The clone's own default label for USD; anything else is the OCONUS currency.
     sourceCurrency: currency && currency !== "USD" ? currency : "U.S. Dollar",
-    invoice: record.invoiceNumber ?? "",
+    // Textract files an INVOICE_RECEIPT_ID under receiptNumber, so the invoice
+    // field is empty on cloud-extracted receipts unless we fall back to it.
+    invoice: record.invoiceNumber || record.receiptNumber || "",
+    merchantAddress: ub?.merchantAddress ?? "",
+    merchantCity: ub?.merchantCity ?? "",
+    merchantState: ub?.merchantState ?? "",
+    merchantPostal: ub?.merchantPostal ?? "",
+    shipCity: ub?.shipCity ?? "",
+    shipState: ub?.shipState ?? "",
+    shipPostal: ub?.shipPostal ?? "",
   };
 
   return { payload, warnings };

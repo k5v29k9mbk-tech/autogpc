@@ -155,6 +155,16 @@ export function Review() {
     <SelectField label={label} required value={form[key]} onChange={(v) => set(key, v)} options={options} />
   );
 
+  // Optional free-text US Bank fields (the address blocks) — same binding, no
+  // asterisk: US Bank doesn't require them and a receipt may not print one.
+  type TextKey = "merchantAddress" | "merchantCity" | "merchantState" | "merchantPostal"
+    | "shipCity" | "shipState" | "shipPostal";
+  const textField = (key: TextKey, label: string) => (
+    <Field label={label} valid={!!form[key].trim()}>
+      <input className="input" value={form[key]} onChange={(e) => set(key, e.target.value)} />
+    </Field>
+  );
+
   const save = async () => {
     // The required-field policy (US Bank's red asterisks) lives in core/draft.
     const gaps = missingRequired(form);
@@ -319,6 +329,11 @@ export function Review() {
           <Field label="Merchant name *" valid={!!form.vendor.trim()}>
             <input className="input" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} />
           </Field>
+          {/* Address blocks read off the document — blank when it didn't print one. */}
+          {textField("merchantAddress", "Merchant address")}
+          {textField("merchantCity", "Merchant city")}
+          {textField("merchantState", "Merchant state/province")}
+          {textField("merchantPostal", "Merchant postal code")}
           {usBankSelect("requiredSourceScreened", "Required Source Screened", REQUIRED_SOURCE_SCREENED_OPTIONS)}
           <SelectField
             label="889 Designation (OM)"
@@ -330,6 +345,9 @@ export function Review() {
 
           {/* Ship to */}
           <div className="stat-label" style={{ gridColumn: "1 / -1", marginTop: "var(--s2)" }}>Shipping</div>
+          {textField("shipCity", "Ship-to city")}
+          {textField("shipState", "Ship-to state/province")}
+          {textField("shipPostal", "Ship-to postal code")}
           {usBankSelect("finalDeliveryOutsideUs", "Final Delivery Location Outside United States?", FINAL_DELIVERY_OUTSIDE_US_OPTIONS)}
 
           {/* Filing */}

@@ -133,4 +133,52 @@ describe("mapAnalyzeExpense — line items", () => {
       unitPrice: "22.46",
     });
   });
+
+  it("keeps the SKU Textract reads off the row", () => {
+    const r = mapAnalyzeExpense(
+      fakeOutput({
+        LineItemGroups: [{ LineItems: [itemRow({ ITEM: "TAC SLING PK", PRODUCT_CODE: "014421091226" })] }],
+      }),
+    );
+    expect(r.lineItems[0].productCode).toBe("014421091226");
+  });
+});
+
+describe("mapAnalyzeExpense — addresses", () => {
+  // CITY/STATE/ZIP_CODE carry no owner in their type — only GroupProperties says
+  // whether a value is the merchant's or the buyer's. Getting this backwards
+  // would push the cardholder's own address as the merchant's.
+  function grouped(type: string, value: string, group: string) {
+    return { ...summaryField(type, value), GroupProperties: [{ Types: [group] }] };
+  }
+
+  it("routes vendor-grouped parts to the merchant and receiver-grouped to ship-to", () => {
+    const r = mapAnalyzeExpense(
+      fakeOutput({
+        SummaryFields: [
+          summaryField("VENDOR_ADDRESS", "Flugplatz 1"),
+          grouped("CITY", "Ramstein", "VENDOR"),
+          grouped("STATE", "RP", "VENDOR"),
+          grouped("ZIP_CODE", "66877", "VENDOR"),
+          grouped("CITY", "Kaiserslautern", "RECEIVER"),
+          grouped("ZIP_CODE", "67657", "RECEIVER"),
+        ],
+      }),
+    );
+    expect(r.fields).toMatchObject({
+      merchantAddress: "Flugplatz 1",
+      merchantCity: "Ramstein",
+      merchantState: "RP",
+      merchantPostal: "66877",
+      shipCity: "Kaiserslautern",
+      shipPostal: "67657",
+    });
+  });
+
+  it("leaves the merchant address alone when only the buyer's is on the document", () => {
+    const r = mapAnalyzeExpense(
+      fakeOutput({ SummaryFields: [grouped("ADDRESS", "Unit 3220 Box 15", "RECEIVER")] }),
+    );
+    expect(r.fields.merchantAddress).toBeUndefined();
+  });
 });

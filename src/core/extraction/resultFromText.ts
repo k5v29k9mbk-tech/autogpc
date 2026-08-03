@@ -7,7 +7,7 @@
 
 import { parseReceipt } from "../parseReceipt";
 import { detectKnownVendor } from "../knownVendors";
-import type { ExtractionSource, LineItem, PurchaseRecord } from "../types";
+import type { ExtractedFields, ExtractionSource, LineItem } from "../types";
 import type { ExtractionResult } from "./extractionService";
 
 export function resultFromText(

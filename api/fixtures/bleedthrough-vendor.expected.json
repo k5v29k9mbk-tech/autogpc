@@ -8,7 +8,7 @@
   "rawText": "EXCHANGE\nRamstein KMCC Mall\nTOTAL 40.45",
   "rawTextSource": "document",
   "lineItems": [
-    { "description": "TAC SLING PK", "quantity": null, "unitPrice": null, "total": "22.46" }
+    { "description": "TAC SLING PK", "quantity": null, "unitPrice": null, "total": "22.46", "productCode": null }
   ],
   "confidence": 0.93,
   "fieldConfidence": {

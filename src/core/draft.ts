@@ -10,6 +10,7 @@ import { emptyChecklist, emptyMandatoryAuth } from "./types";
 import type {
   Attachment,
   DocType,
+  ExtractedFields,
   DocumentChecklist,
   ExtractionSource,
   LineItem,
@@ -41,7 +42,7 @@ import type { ExtractionResult } from "./extraction/extractionService";
  * Lives only in the store until the reviewer saves it.
  */
 export type ReviewDraft = {
-  fields: Partial<PurchaseRecord>;
+  fields: ExtractedFields;
   rawText: string;
   lineItems: LineItem[];
   source: ExtractionSource;
@@ -78,6 +79,14 @@ export type RecordEdits = {
   requiredSourceScreened: string;
   finalDeliveryOutsideUs: string;
   lineItemTax: string;
+  // Address blocks, seeded from extraction (see ExtractedFields).
+  merchantAddress: string;
+  merchantCity: string;
+  merchantState: string;
+  merchantPostal: string;
+  shipCity: string;
+  shipState: string;
+  shipPostal: string;
   status: RecordStatus;
   docType: DocType;
   lineItems: LineItem[];
@@ -137,6 +146,13 @@ export function seedEdits(draft: ReviewDraft | null, user: SeedUser = {}): Recor
     requiredSourceScreened: "",
     finalDeliveryOutsideUs: finalDeliveryDefault(user.dutyStationOconus),
     lineItemTax: "0.00",
+    merchantAddress: f.merchantAddress ?? "",
+    merchantCity: f.merchantCity ?? "",
+    merchantState: f.merchantState ?? "",
+    merchantPostal: f.merchantPostal ?? "",
+    shipCity: f.shipCity ?? "",
+    shipState: f.shipState ?? "",
+    shipPostal: f.shipPostal ?? "",
     status: "needs_review",
     docType: draft?.docType ?? "receipt",
     lineItems: draft?.lineItems ?? [],
@@ -268,6 +284,13 @@ export function recordFromDraft(
       requiredSourceScreened: edits.requiredSourceScreened.trim(),
       finalDeliveryOutsideUs: edits.finalDeliveryOutsideUs.trim(),
       lineItemTax: edits.lineItemTax.trim() || "0.00",
+      merchantAddress: edits.merchantAddress.trim(),
+      merchantCity: edits.merchantCity.trim(),
+      merchantState: edits.merchantState.trim(),
+      merchantPostal: edits.merchantPostal.trim(),
+      shipCity: edits.shipCity.trim(),
+      shipState: edits.shipState.trim(),
+      shipPostal: edits.shipPostal.trim(),
     },
     section889: edits.section889,
     mandatoryAuth: edits.mandatoryAuth,
