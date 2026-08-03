@@ -132,6 +132,19 @@ describe("seedEdits", () => {
     expect(e.totalAmount).toBe("12,99");
     expect(e.requestorName).toBe("");
   });
+
+  it("seeds the address blocks the extractor read off the document", () => {
+    const d = draftFromResult(
+      result({ fields: { merchantAddress: "Flugplatz 1", merchantCity: "Ramstein", shipPostal: "67657" } }),
+      { imageUri: "", imageBlob: null },
+    );
+    const e = seedEdits(d);
+    expect(e.merchantAddress).toBe("Flugplatz 1");
+    expect(e.merchantCity).toBe("Ramstein");
+    expect(e.shipPostal).toBe("67657");
+    // Not on the document -> blank, not undefined (the form binds to strings).
+    expect(e.merchantState).toBe("");
+  });
 });
 
 describe("missingRequired", () => {
