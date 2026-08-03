@@ -9,3 +9,4 @@ dist-ssr
 
 # Claude Code local (personal) settings — keep shared .claude/ config trackable
 .claude/settings.local.json
+.env*

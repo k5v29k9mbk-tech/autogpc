@@ -6,6 +6,9 @@ export type LineItem = {
   quantity: string | null;
   unitPrice: string | null;
   total: string | null;
+  /** SKU / product code when the document prints one (Textract PRODUCT_CODE).
+   *  Optional: rows built by hand and by the regex parser don't have it. */
+  productCode?: string | null;
 };
 
 export type DocumentChecklist = {
@@ -130,7 +133,24 @@ export type UsBankOrderFields = {
   requiredSourceScreened: string;
   finalDeliveryOutsideUs: string;
   lineItemTax: string;
+  // The order form's address blocks. Seeded from extraction (Textract's
+  // vendor-grouped address for the merchant, receiver-grouped for ship-to),
+  // reviewer-editable. Optional: records saved before these existed lack them.
+  merchantAddress?: string;
+  merchantCity?: string;
+  merchantState?: string;
+  merchantPostal?: string;
+  shipCity?: string;
+  shipState?: string;
+  shipPostal?: string;
 };
+
+/**
+ * What an extractor can fill in. Mostly record fields, plus the order-form
+ * fields that live in `record.usBank` — extraction reads an address off the
+ * document, so it seeds those too rather than leaving them for the reviewer.
+ */
+export type ExtractedFields = Partial<PurchaseRecord> & Partial<UsBankOrderFields>;
 
 export type PurchaseRecord = {
   id: string;

@@ -16,7 +16,7 @@ export function resultFromText(
   confidence?: number,
 ): ExtractionResult {
   const parsed = parseReceipt(rawText);
-  const fields: Partial<PurchaseRecord> = {
+  const fields: ExtractedFields = {
     vendor: parsed.vendor ?? "",
     transactionDate: parsed.transactionDate ?? "",
     totalAmount: parsed.totalAmount ?? "",
@@ -31,7 +31,7 @@ export function resultFromText(
 
 /** What /api/extract returns (the fields the client actually reads). */
 export type CloudPayload = {
-  fields: Partial<PurchaseRecord>;
+  fields: ExtractedFields;
   rawText: string;
   /** "document" = real OCR lines in reading order; "summary" = synthetic "TYPE: value" list. */
   rawTextSource?: "document" | "summary";
@@ -40,8 +40,8 @@ export type CloudPayload = {
 };
 
 /** Keep only fields that carry information, so they override regex gaps but blanks don't. */
-function nonEmpty(fields: Partial<PurchaseRecord>): Partial<PurchaseRecord> {
-  const out: Partial<PurchaseRecord> = {};
+function nonEmpty(fields: ExtractedFields): ExtractedFields {
+  const out: ExtractedFields = {};
   for (const [key, value] of Object.entries(fields)) {
     if (value !== null && value !== "" && value !== undefined) {
       (out as Record<string, unknown>)[key] = value;

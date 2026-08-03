@@ -7,7 +7,7 @@
 //
 // UI-free and platform-agnostic on purpose.
 
-import type { ExtractionSource, LineItem, PurchaseRecord } from "../types";
+import type { ExtractedFields, ExtractionSource, LineItem } from "../types";
 
 /** Bytes + a hint of what they are. A `File` satisfies this on the web. */
 export type ExtractionInput = {
@@ -32,7 +32,7 @@ export type ExtractionProgress = {
 export type ProgressCallback = (p: ExtractionProgress) => void;
 
 export type ExtractionResult = {
-  fields: Partial<PurchaseRecord>;
+  fields: ExtractedFields;
   rawText: string;
   lineItems: LineItem[];
   source: ExtractionSource;

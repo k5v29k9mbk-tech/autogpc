@@ -39,6 +39,7 @@ type LineItem = {
   quantity: string | null;
   unitPrice: string | null;
   total: string | null;
+  productCode: string | null;
 };
 
 /**
@@ -99,7 +100,37 @@ export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
     const conf = f.ValueDetection?.Confidence ?? 0;
     if (f.Currency?.Code && !currency) currency = f.Currency.Code;
 
+    // Textract tags an address block as the VENDOR's or the RECEIVER's; the bare
+    // CITY/STATE/ZIP_CODE types are otherwise identical, so the group decides
+    // whether a value is the merchant's address or the ship-to.
+    const groups = (f.GroupProperties ?? []).flatMap((g) => g.Types ?? []);
+    const receiver = groups.includes("RECEIVER");
+
     switch (type) {
+      case "VENDOR_ADDRESS":
+        fields.merchantAddress = clean(value) || null;
+        break;
+      case "RECEIVER_ADDRESS":
+        // One block, and the clone's ship-to is city/state/postal — keep it in
+        // the city slot rather than dropping it; the reviewer splits it if needed.
+        fields.shipCity ??= clean(value) || null;
+        break;
+      case "ADDRESS":
+      case "STREET":
+        if (!receiver) fields.merchantAddress ??= clean(value) || null;
+        break;
+      case "CITY":
+        if (receiver) fields.shipCity = clean(value) || null;
+        else fields.merchantCity = clean(value) || null;
+        break;
+      case "STATE":
+        if (receiver) fields.shipState = clean(value) || null;
+        else fields.merchantState = clean(value) || null;
+        break;
+      case "ZIP_CODE":
+        if (receiver) fields.shipPostal = clean(value) || null;
+        else fields.merchantPostal = clean(value) || null;
+        break;
       case "VENDOR_NAME":
         vendorCandidates.push({ text: clean(value), label: "VENDOR_NAME", confidence: conf });
         break;
@@ -133,7 +164,13 @@ export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
   const lineItems: LineItem[] = [];
   for (const g of doc?.LineItemGroups ?? []) {
     for (const li of g.LineItems ?? []) {
-      const row: LineItem = { description: "", quantity: null, unitPrice: null, total: null };
+      const row: LineItem = {
+        description: "",
+        quantity: null,
+        unitPrice: null,
+        total: null,
+        productCode: null,
+      };
       for (const lf of li.LineItemExpenseFields ?? []) {
         const t = lf.Type?.Text;
         const v = clean(lf.ValueDetection?.Text);
@@ -141,6 +178,7 @@ export function mapAnalyzeExpense(out: AnalyzeExpenseCommandOutput) {
         else if (t === "QUANTITY") row.quantity = v || null;
         else if (t === "UNIT_PRICE") row.unitPrice = amount(v) || null;
         else if (t === "PRICE") row.total = amount(v) || null;
+        else if (t === "PRODUCT_CODE") row.productCode = v || null;
       }
       // Textract sometimes folds the qty line into ITEM ("... 4 @ 22.46 =");
       // qty/unit price are captured in their own fields, so strip the suffix.
