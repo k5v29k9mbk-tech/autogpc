@@ -8,8 +8,8 @@
 // a blank one in an audit context.
 
 import type { LineItem } from "./types";
-import { detectKnownVendor } from "./knownVendors";
-import { ADJUSTMENT_ROW } from "./vendorRules";
+import { detectKnownVendor } from "./knownVendors.js";
+import { ADJUSTMENT_ROW } from "./vendorRules.js";
 
 export type ParsedReceipt = {
   vendor: string | null;
@@ -171,6 +171,10 @@ const TOTAL_KEYWORDS: { re: RegExp; rank: number }[] = [
   { re: /\btotal\b|\bsumme\b|\bgesamt\b|\bbetrag\b/i, rank: 3 },
   { re: /\bbalance\b/i, rank: 2 },
   { re: /\bamount\b/i, rank: 1 },
+  // A service quote often prices the job as a rate ("Monthly Rate 1,250.00")
+  // and never prints the word "total" — lowest rank, so any real total on a
+  // document that has one still wins. Tax/VAT rate lines are skipped above.
+  { re: /\brates?\b/i, rank: 1 },
 ];
 
 export function parseTotal(text: string): string | null {

@@ -68,6 +68,15 @@ describe("inferDocType", () => {
     expect(inferDocType(result({ source: "pdf_text", rawText: "QUOTATION" }))).toBe("quote");
     expect(inferDocType(result({ source: "pdf_text", rawText: "Better Direct" }))).toBe("invoice");
   });
+  it("reads a quote whose boilerplate also says invoice, on any source", () => {
+    const quote = "Yellow Networks\nQuotation Q-4471\nInvoice Address: Unit 5 ...";
+    expect(inferDocType(result({ source: "pdf_text", rawText: quote }))).toBe("quote");
+    expect(inferDocType(result({ source: "cloud", rawText: quote }))).toBe("quote");
+    // ...and an invoice citing its quote is still an invoice.
+    expect(
+      inferDocType(result({ source: "cloud", rawText: "INVOICE 88\nAgainst quote Q-4471" })),
+    ).toBe("invoice");
+  });
   it("treats OCR'd images as receipts", () => {
     expect(inferDocType(result({ source: "tesseract", rawText: "TOTAL $5" }))).toBe("receipt");
   });

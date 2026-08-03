@@ -101,8 +101,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       return;
     }
-    const order = created.order ?? {};
-    const controlNumber = order.controlNumber;
+    // Not `order` — that name already holds the inbound payload (line 33).
+    const createdOrder = created.order ?? {};
+    const controlNumber = createdOrder.controlNumber;
     const suggestion = created.matchSuggestion;
 
     // The order exists from here on — later failures are surfaced as warnings
@@ -145,7 +146,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    res.status(201).json({ ok: true, order, matched, documentsUploaded, warnings });
+    // `order` here is the clone's created order (control number and all) — the
+    // client reads body.order.controlNumber, NOT the payload we sent up.
+    res.status(201).json({ ok: true, order: createdOrder, matched, documentsUploaded, warnings });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("usbank-order proxy failed:", message);

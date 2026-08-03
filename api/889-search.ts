@@ -11,7 +11,7 @@
 // UEI/CAGE, registration status, and FAR 52.204-26 representations. No GPC PII.
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { build889Query, SAM_889_ENTITIES_PATH } from "../src/lib/section889";
+import { build889Query, SAM_889_ENTITIES_PATH } from "../src/lib/section889.js";
 
 const SAM_TOOL_BASE =
   process.env.SAM_889_BASE ?? "https://889.smartpay.gsa.gov";

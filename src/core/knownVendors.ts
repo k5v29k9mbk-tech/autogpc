@@ -12,7 +12,7 @@
 // purchase is always "889 Government"; the review form seeds it from here.
 
 import type { DESIGNATION_889_OPTIONS } from "./types";
-import { normalizeForMatch } from "./vendorRules";
+import { normalizeForMatch } from "./vendorRules.js";
 
 export type KnownVendor = {
   /** Canonical vendor name written to the record. */

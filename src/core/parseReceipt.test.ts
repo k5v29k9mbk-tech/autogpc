@@ -59,6 +59,11 @@ describe("parseTotal / parseTax", () => {
     expect(parseTotal(text)).toBe("43.20");
     expect(parseTax(text)).toBe("3.20");
   });
+  it("takes the rate as the price on a quote with no total line", () => {
+    expect(parseTotal("Yellow Networks\nQuotation\nMonthly Rate 1,250.00")).toBe("1250.00");
+    // A document that does print a total still wins over any rate line.
+    expect(parseTotal("VAT Rate 19% 19.00\nHourly Rate 150.00\nTotal Due 969.00")).toBe("969.00");
+  });
   it("ignores the percentage in a VAT line", () => {
     const text = "Zwischensumme 100,00\nMwSt 19% 19,00\nGesamt 119,00";
     expect(parseTotal(text)).toBe("119.00");

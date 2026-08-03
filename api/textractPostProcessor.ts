@@ -13,7 +13,7 @@
 import type { ExpenseDocument } from "@aws-sdk/client-textract";
 // Shared with the client parser — one owner for the bleed-through defense
 // (blacklist, shape check, normalization). See src/core/vendorRules.ts.
-import { isNotVendorLine, normalizeForMatch, plausibleVendor } from "../src/core/vendorRules";
+import { isNotVendorLine, normalizeForMatch, plausibleVendor } from "../src/core/vendorRules.js";
 
 /** Collapse whitespace runs; shared by extract.ts for every Textract string. */
 export function clean(s?: string): string {

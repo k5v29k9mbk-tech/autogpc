@@ -16,9 +16,9 @@ import {
   type AnalyzeExpenseCommandOutput,
   type ExpenseDocument,
 } from "@aws-sdk/client-textract";
-import { clean, ocrLines, selectVendor } from "./textractPostProcessor";
-import { ADJUSTMENT_ROW } from "../src/core/vendorRules";
-import { normalizeAmount } from "../src/core/parseReceipt";
+import { clean, ocrLines, selectVendor } from "./textractPostProcessor.js";
+import { ADJUSTMENT_ROW } from "../src/core/vendorRules.js";
+import { normalizeAmount } from "../src/core/parseReceipt.js";
 
 // Vercel runs functions on AWS Lambda, which RESERVES the env names AWS_REGION,
 // AWS_ACCESS_KEY_ID, and AWS_SECRET_ACCESS_KEY for its own runtime — setting

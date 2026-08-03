@@ -195,19 +195,26 @@ export function missingRequired(edits: RecordEdits): string[] {
 }
 
 /**
- * Best guess at DocType from an extraction. Native-PDF text usually means a
- * vendor invoice/quote; OCR'd images are receipts; the NATO SOFA VAT-relief
- * form is recognised by its German title. Correctable on review.
+ * Best guess at DocType from an extraction. The document's own label decides;
+ * the source only picks the default when it carries none (native-PDF text is a
+ * vendor invoice, OCR'd paper is a receipt). The NATO SOFA VAT-relief form is
+ * recognised by its German title. Correctable on review.
+ *
+ * The label race goes to whichever word appears FIRST, not to invoice: a quote
+ * prints an "Invoice Address" block and an invoice cites the quote it came
+ * from, so testing invoice first read every Yellow Networks-style quote as an
+ * invoice. And the keywords have to run on cloud/OCR text too — routing is
+ * cloud-first, so a quote PDF arrives with source "cloud", which used to fall
+ * straight through to "receipt".
  */
 export function inferDocType(result: ExtractionResult): DocType {
   const t = result.rawText.toLowerCase();
   if (/abwicklungsschein|vat relief|sofa/.test(t)) return "vat_form";
-  if (result.source === "pdf_text") {
-    if (/invoice|rechnung/.test(t)) return "invoice";
-    if (/quote|quotation|angebot/.test(t)) return "quote";
-    return "invoice";
-  }
-  return "receipt";
+  const quote = t.search(/\bquotation\b|\bquote\b|\bangebot\b/);
+  const invoice = t.search(/\binvoice\b|\brechnung/);
+  if (quote > -1 && (invoice < 0 || quote < invoice)) return "quote";
+  if (invoice > -1) return "invoice";
+  return result.source === "pdf_text" ? "invoice" : "receipt";
 }
 
 /** Which supporting document a DocType implies is present. User-editable after. */
