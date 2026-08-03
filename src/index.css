@@ -26,8 +26,11 @@
   --danger: #c2756b; /* muted — delete / errors */
   --danger-soft: #3a2723;
   --warn: #e0a85a; /* amber — needs-review / attention */
+  --status-warn: #d8b487; /* needs-review badge / weak-password meter */
+  --status-info: #9fc7d6; /* ready-for-entry badge */
 
   --grid-line: rgba(236, 231, 218, 0.028); /* faint blueprint grid */
+  --nav-bg: rgba(11, 12, 11, 0.82); /* translucent sticky nav / mobile tab bar */
 
   /* Electric lime — the single accent. Reserved for eyebrows, the one primary
      action, and status/brand marks. Used with restraint. */
@@ -59,6 +62,43 @@
   --shadow-raise: 0 1px 0 rgba(255, 255, 255, 0.02);
 
   color-scheme: dark;
+}
+
+/* Light mode — same shape language (0px radii, mono accents), inverted field.
+   Only the palette flips: the lime stays the lime for FILLS (it's the brand),
+   but lime-as-text is unreadable on paper, so --*-text goes to a deep olive. */
+:root[data-theme="light"] {
+  --bg: #f6f5f0;
+  --surface: #ffffff;
+  --surface-2: #f0eee7;
+  --surface-3: #e4e1d7;
+  --border: #dcd8cc;
+  --border-strong: #bfbaab;
+  --text: #17170f;
+  --text-muted: #5d5d54;
+  --text-faint: #75756c;
+  --accent: #5d7a12;
+  --accent-soft: rgba(140, 180, 30, 0.16);
+  --accent-text: #48610d;
+  --danger: #a23c2b;
+  --danger-soft: #f6e2de;
+  --warn: #8a5c11;
+  --status-warn: #8a5c11;
+  --status-info: #29647a;
+
+  --grid-line: rgba(20, 20, 15, 0.035);
+  --nav-bg: rgba(246, 245, 240, 0.82);
+
+  --brand: #c5f63b;
+  --brand-strong: #b2e62a;
+  --brand-text: #48610d;
+  --brand-tint: rgba(197, 246, 59, 0.28);
+  --brand-border: rgba(120, 160, 20, 0.45);
+
+  --ring: 0 0 0 3px rgba(20, 20, 15, 0.12);
+  --shadow-raise: 0 1px 0 rgba(0, 0, 0, 0.03);
+
+  color-scheme: light;
 }
 
 * {
@@ -214,7 +254,7 @@ button {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(11, 12, 11, 0.82);
+  background: var(--nav-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -565,7 +605,7 @@ button {
 }
 
 .badge.status-needs_review {
-  color: #d8b487;
+  color: var(--status-warn);
 }
 .badge.status-reviewed {
   color: var(--accent-text);
@@ -573,7 +613,7 @@ button {
   border-color: #3a4a3c;
 }
 .badge.status-ready_for_entry {
-  color: #9fc7d6;
+  color: var(--status-info);
 }
 .badge.status-exported {
   color: var(--text-muted);
@@ -1397,7 +1437,7 @@ details.collapsible[open] summary::before {
 }
 
 .pw-meter[data-strength="fair"] span:nth-child(-n + 2) {
-  background: #d8b487;
+  background: var(--status-warn);
 }
 
 .pw-hint {
@@ -1707,7 +1747,7 @@ details.collapsible[open] summary::before {
     margin: 0;
     gap: 0;
     justify-content: space-around;
-    background: rgba(11, 12, 11, 0.92);
+    background: var(--nav-bg);
     backdrop-filter: blur(12px);
     border-top: 1px solid var(--border);
     padding: var(--s2) var(--s3);

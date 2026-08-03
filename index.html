@@ -19,6 +19,15 @@
     />
 
     <title>Nexus</title>
+
+    <!-- Apply the saved theme before first paint so a light-mode user never
+         sees a black flash. Mirrors src/lib/theme.ts. -->
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem("nexus.theme") === "light" ? "light" : "dark";
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

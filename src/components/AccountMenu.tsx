@@ -5,11 +5,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { displayName, useAuth } from "../auth";
+import { getTheme, setTheme } from "../lib/theme";
 import {
   IconChevronRight,
   IconLifebuoy,
   IconLogOut,
+  IconMoon,
   IconSettings,
+  IconSun,
   IconUser,
 } from "./icons";
 
@@ -17,6 +20,7 @@ export function AccountMenu() {
   const { mode, user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [theme, setThemeState] = useState(getTheme);
   const ref = useRef<HTMLDivElement>(null);
 
   const isGuest = mode === "guest";
@@ -112,6 +116,25 @@ export function AccountMenu() {
           >
             <IconLifebuoy width={15} height={15} />
             Support
+          </button>
+
+          <div className="account-pop-sep" />
+
+          {/* Appearance — flips instantly, no reload; the menu stays open so
+              the switch can be seen (and undone) in place. */}
+          <button
+            type="button"
+            className="account-pop-item"
+            role="menuitemcheckbox"
+            aria-checked={theme === "light"}
+            onClick={() => {
+              const next = theme === "dark" ? "light" : "dark";
+              setTheme(next);
+              setThemeState(next);
+            }}
+          >
+            {theme === "dark" ? <IconSun width={15} height={15} /> : <IconMoon width={15} height={15} />}
+            {theme === "dark" ? "Light mode" : "Night mode"}
           </button>
 
           <div className="account-pop-sep" />
