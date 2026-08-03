@@ -43,9 +43,12 @@ describe("toIsoDate", () => {
     expect(toIsoDate("10/17/2024")).toBe("2024-10-17");
     expect(toIsoDate("22.04.2026")).toBe("2026-04-22");
   });
+  it("reads the textual months quotes and invoices print", () => {
+    expect(toIsoDate("Oct 17 2024")).toBe("2024-10-17");
+  });
   it("returns null when unparseable", () => {
     expect(toIsoDate("")).toBeNull();
-    expect(toIsoDate("Oct 17 2024")).toBeNull();
+    expect(toIsoDate("sometime last spring")).toBeNull();
   });
 });
 
@@ -80,7 +83,7 @@ describe("toUsBankOrder", () => {
 
   it("parses messy amounts and omits an unparseable date", () => {
     const { payload, warnings } = toUsBankOrder(
-      record({ totalAmount: "$1,234.56", transactionDate: "Oct 17 2024" }),
+      record({ totalAmount: "$1,234.56", transactionDate: "sometime last spring" }),
       { requestorName: "X" },
     );
     expect(payload.amount).toBe(1234.56);

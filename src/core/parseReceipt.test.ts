@@ -284,6 +284,29 @@ describe("parseLineItems", () => {
     expect(parseLineItems("2 @ 162.00 = 360.00")).toEqual([]);
   });
 
+  // Plenty of real merchandise has no two adjacent letters, so "must contain a
+  // word" cannot be the whole test — it would silently empty a receipt of
+  // cigarettes, soda and hardware bin stock.
+  it("keeps merchandise whose description has no two adjacent letters", () => {
+    const items = parseLineItems(
+      ["L&M 6.50", "M&M'S 4.29", "A&W 1.99", "A4 80 4,50", "M8 X 40 1.29", "3/4 X 10 8.49"].join("\n"),
+    );
+    expect(items.map((i) => [i.description, i.total])).toEqual([
+      ["L&M", "6.50"],
+      ["M&M'S", "4.29"],
+      ["A&W", "1.99"],
+      ["A4 80", "4.50"],
+      ["M8 X 40", "1.29"],
+      ["3/4 X 10", "8.49"],
+    ]);
+    // Known gaps, both pre-existing and both under-extraction rather than a
+    // wrong row: simpleRow's description is at least 3 characters, and a
+    // dimension line that reads exactly like a qty/price column set is
+    // genuinely ambiguous once the printed column gaps are gone.
+    expect(parseLineItems("V8 3.49")).toEqual([]);
+    expect(parseLineItems("9 X 19 24.99")).toEqual([]);
+  });
+
   it("consumes the number line exactly once", () => {
     const items = parseLineItems(
       ["WIDGET 12345678", "1 0 40.45 = 44.95", "EXTCORD ORNG 50FT 14.99"].join("\n"),

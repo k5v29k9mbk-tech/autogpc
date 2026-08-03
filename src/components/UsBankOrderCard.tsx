@@ -21,6 +21,18 @@ import { IconAlert, IconCheck } from "./icons";
 export const USBANK_ENABLED = import.meta.env.VITE_USBANK_ENABLED === "true";
 const APP_URL = import.meta.env.VITE_USBANK_APP_URL;
 
+/** Deep link to the order in the clone's Access Online UI. The clone routes on
+ *  the hash (`#/orders/view/<controlNumber>`), so drop whatever hash the env var
+ *  carries and address the order itself — `#/orders` is not a route and silently
+ *  falls back to the dashboard, which is why an order looked unreachable. */
+export function usBankOrderUrl(controlNumber?: string): string | null {
+  if (!APP_URL) return null;
+  const base = String(APP_URL).split("#")[0];
+  return controlNumber
+    ? `${base}#/orders/view/${encodeURIComponent(controlNumber)}`
+    : `${base}#/orders/manage`;
+}
+
 export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
   const { user, getAccessToken } = useAuth();
   const { updateRecord, resolveImage } = useStore();
@@ -72,66 +84,7 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
     }
   };
 
-  if (result) {
-    return (
-      <div className="card">
-        <div className="card-title">Send to US Bank order</div>
-        <div className="stack" style={{ gap: "var(--s3)" }}>
-          <div className="alert alert-success">
-            <IconCheck width={16} height={16} />
-            <div>
-              <strong>Done in US Bank.</strong>
-              <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em" }}>
-                <li style={{ fontSize: 13 }}>
-                  Order created — Control Number <strong>{result.controlNumber}</strong>.
-                </li>
-                <li style={{ fontSize: 13 }}>
-                  {result.matched ? (
-                    <>
-                      Matched to statement: {result.matched.merchant} ·{" "}
-                      {formatAmount(String(result.matched.amount), currency)}
-                      {result.matched.transDate ? ` · ${result.matched.transDate}` : ""}.
-                    </>
-                  ) : (
-                    "No statement matched."
-                  )}
-                </li>
-                <li style={{ fontSize: 13 }}>
-                  {result.documentsUploaded > 0
-                    ? `${result.documentsUploaded} document${result.documentsUploaded === 1 ? "" : "s"} uploaded to the order.`
-                    : "No documents uploaded."}
-                </li>
-              </ul>
-            </div>
-          </div>
-          {result.warnings.length > 0 && (
-            <div className="alert">
-              <IconAlert width={16} height={16} />
-              <div>
-                <strong>Needs a manual follow-up:</strong>
-                <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em" }}>
-                  {result.warnings.map((w, i) => (
-                    <li key={i} style={{ fontSize: 13 }}>{w}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          )}
-          {APP_URL && (
-            <a
-              className="btn btn-sm btn-ghost"
-              href={APP_URL}
-              target="_blank"
-              rel="noreferrer"
-              style={{ width: "fit-content" }}
-            >
-              Open in US Bank →
-            </a>
-          )}
-        </div>
-      </div>
-    );
-  }
+  if (result) return <UsBankOrderResult result={result} currency={currency} />;
 
   return (
     <div className="card">
@@ -279,6 +232,76 @@ export function UsBankOrderCard({ record }: { record: PurchaseRecord }) {
             </span>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** What happened in US Bank. Shared by this card and Review's auto-push so the
+ *  two paths report the order the same way. */
+export function UsBankOrderResult({
+  result,
+  currency,
+}: {
+  result: CreatedOrder;
+  currency: string;
+}) {
+  const orderUrl = usBankOrderUrl(result.controlNumber);
+  return (
+    <div className="card">
+      <div className="card-title">Send to US Bank order</div>
+      <div className="stack" style={{ gap: "var(--s3)" }}>
+        <div className="alert alert-success">
+          <IconCheck width={16} height={16} />
+          <div>
+            <strong>Done in US Bank.</strong>
+            <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em" }}>
+              <li style={{ fontSize: 13 }}>
+                Order created — Control Number <strong>{result.controlNumber}</strong>.
+              </li>
+              <li style={{ fontSize: 13 }}>
+                {result.matched ? (
+                  <>
+                    Matched to statement: {result.matched.merchant} ·{" "}
+                    {formatAmount(String(result.matched.amount), currency)}
+                    {result.matched.transDate ? ` · ${result.matched.transDate}` : ""}.
+                  </>
+                ) : (
+                  "No statement matched."
+                )}
+              </li>
+              <li style={{ fontSize: 13 }}>
+                {result.documentsUploaded > 0
+                  ? `${result.documentsUploaded} document${result.documentsUploaded === 1 ? "" : "s"} uploaded to the order.`
+                  : "No documents uploaded."}
+              </li>
+            </ul>
+          </div>
+        </div>
+        {result.warnings.length > 0 && (
+          <div className="alert">
+            <IconAlert width={16} height={16} />
+            <div>
+              <strong>Needs a manual follow-up:</strong>
+              <ul style={{ margin: "4px 0 0", paddingLeft: "1.1em" }}>
+                {result.warnings.map((w, i) => (
+                  <li key={i} style={{ fontSize: 13 }}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+        {orderUrl && (
+          <a
+            className="btn btn-sm btn-ghost"
+            href={orderUrl}
+            target="_blank"
+            rel="noreferrer"
+            style={{ width: "fit-content" }}
+          >
+            Open order {result.controlNumber} in US Bank →
+          </a>
+        )}
       </div>
     </div>
   );

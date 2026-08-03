@@ -21,8 +21,16 @@ describe("toISODate", () => {
     expect(toISODate("22.04.2026")).toBe("2026-04-22");
     expect(toISODate("2026-04-22")).toBe("2026-04-22");
   });
+  it("normalizes the textual months quotes and invoices print", () => {
+    expect(toISODate("Oct 17 2024")).toBe("2024-10-17");
+    expect(toISODate("19 Mar 2025")).toBe("2025-03-19");
+    expect(toISODate("19-Mar-2025")).toBe("2025-03-19");
+    expect(toISODate("Mar 19, 2025")).toBe("2025-03-19");
+    expect(toISODate("2 September 2025")).toBe("2025-09-02");
+  });
   it("returns '' when it can't parse confidently", () => {
-    expect(toISODate("Oct 17 2024")).toBe("");
+    expect(toISODate("Smorgasbord 17 2024")).toBe(""); // not a month
+    expect(toISODate("19 Mar 25")).toBe(""); // two-digit year is ambiguous
     expect(toISODate("")).toBe("");
     expect(toISODate(null)).toBe("");
   });

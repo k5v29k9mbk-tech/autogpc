@@ -136,6 +136,12 @@ const DATE_RES = [
   /\b(\d{4}-\d{1,2}-\d{1,2})\b/, // YYYY-MM-DD
   /\b(\d{1,2}\.\d{1,2}\.\d{2,4})\b/, // DD.MM.YYYY
   /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/, // MM/DD/YYYY or DD/MM/YYYY
+  // Textual months — "19 Mar 2025", "19-Mar-2025", "Mar 19, 2025". Quotes and
+  // invoices print these against a "Quote Date :" label, and pickVendor has to
+  // see them as dates: otherwise the whole label line stays a candidate and
+  // wins the vendor slot on any PDF whose text layer emits it above the header.
+  /\b(\d{1,2}[\s-]+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[\s-]+\d{2,4})\b/i,
+  /\b((?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[\s-]+\d{1,2},?[\s-]+\d{2,4})\b/i,
 ];
 
 export function parseDate(text: string): string | null {
@@ -424,11 +430,15 @@ export function parseLineItems(text: string): LineItem[] {
       continue;
     }
     const s = line.match(simpleRow);
-    // A description with no real word in it is a stray numeric line (date,
-    // reference, register code, or a qty/price column set whose "@" OCR'd as a
-    // letter), not a purchase — the single-space rule above admits those where
-    // the old two-space rule couldn't.
-    if (s && hasWord.test(s[1] ?? "")) {
+    // A description is a purchase unless it is really a qty/price column set
+    // that slipped through on a misread multiplier ("10 a 2.78 = 30.90" — the
+    // "a" is a printed "@"). Demanding a real word alone is too strict: plenty
+    // of merchandise has no two adjacent letters ("L&M", "A4 80", "M8 X 40").
+    // So: a letter is still required (that is what keeps dates and register
+    // codes out), and a description without a full WORD additionally has to not
+    // be a column set.
+    const desc = s?.[1] ?? "";
+    if (s && /[A-Za-zÀ-ÿ]/.test(desc) && (hasWord.test(desc) || !columnsRow.test(asColumns(line)))) {
       items.push({
         description: s[1].trim(),
         quantity: null,

@@ -15,6 +15,10 @@ import {
   SPECIAL_PRE_APPROVAL_OPTIONS,
   SPEND_ANALYSIS_OPTIONS,
 } from "../lib/usbankOrder";
+import { toUsBankOrder } from "../lib/usbankOrder";
+import { submitUsBankOrder, type CreatedOrder } from "../lib/usbankClient";
+import { buildUsBankDocuments } from "../lib/usbankDocuments";
+import { USBANK_ENABLED, UsBankOrderResult } from "../components/UsBankOrderCard";
 import { Field, SelectField } from "../components/ui";
 import { confidenceBucket } from "../lib/format";
 import { Section889Field } from "../components/Section889Field";
@@ -37,8 +41,8 @@ type Form = RecordEdits;
 const CURRENCIES = ["", ...GPC_CURRENCIES];
 
 export function Review() {
-  const { draft, setDraft, addRecord, deleteAttachment } = useStore();
-  const { user } = useAuth();
+  const { draft, setDraft, addRecord, deleteAttachment, resolveImage } = useStore();
+  const { user, mode, getAccessToken } = useAuth();
   const navigate = useNavigate();
 
   // The record's id, fixed up front so supporting documents uploaded during
@@ -59,6 +63,13 @@ export function Review() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Save also pushes the order to US Bank (create → match → attach). These hold
+  // the outcome: the record is already saved either way, so a failed push shows
+  // the reason and hands off to the record's manual card instead of blocking.
+  const [pushing, setPushing] = useState(false);
+  const [pushed, setPushed] = useState<CreatedOrder | null>(null);
+  const [pushError, setPushError] = useState<string | null>(null);
+
   // Full-screen view of the uploaded document, for checking fields against the source.
   const [zoom, setZoom] = useState(false);
   useEffect(() => {
@@ -78,6 +89,38 @@ export function Review() {
   }, [draft]);
 
   if (!draft) return <Navigate to="/scan" replace />;
+
+  // Post-save outcome: the record is stored and the US Bank push has run.
+  if (pushed || pushError) {
+    return (
+      <div className="stack" style={{ gap: "var(--s5)" }}>
+        <div className="page-head">
+          <div className="eyebrow">Saved</div>
+          <h1>Record saved</h1>
+        </div>
+        {pushed && (
+          <UsBankOrderResult result={pushed} currency={(form.currency || "USD").toUpperCase()} />
+        )}
+        {pushError && (
+          <div className="card">
+            <div className="card-title">Send to US Bank order</div>
+            <div className="alert alert-error" role="alert">
+              <div>
+                The record saved, but the US Bank order failed: {pushError} Open the record and use
+                “Create, match &amp; attach in US Bank” to retry.
+              </div>
+            </div>
+          </div>
+        )}
+        <div className="row wrap">
+          <button className="btn btn-primary btn-lg" onClick={() => finish("/records")}>Done</button>
+          <button className="btn btn-ghost btn-lg" onClick={() => finish(`/records/${recordId}`)}>
+            Open record
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -114,18 +157,49 @@ export function Review() {
     setMissing([]);
     setSaveError(null);
     setSaving(true);
+    const record = recordFromDraft(draft, form, { id: recordId });
     try {
-      const record = recordFromDraft(draft, form, { id: recordId });
       await addRecord(record, draft.imageBlob);
-      setDraft(null);
-      navigate("/records");
     } catch (e) {
       console.error("Save failed", e);
       setSaveError(e instanceof Error ? e.message : JSON.stringify(e));
       window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     } finally {
       setSaving(false);
     }
+
+    // Guests, and builds without the proxy, have nothing to push to — the
+    // record's detail page still carries the manual card.
+    if (!(USBANK_ENABLED && mode === "authenticated")) {
+      setDraft(null);
+      navigate("/records");
+      return;
+    }
+
+    // Auto-push: create the order, match it to its statement, attach the docs.
+    // The record is already saved, so a failure here is reported, not fatal.
+    setPushing(true);
+    try {
+      const accessToken = await getAccessToken();
+      const documents = await buildUsBankDocuments(record, resolveImage);
+      const { payload } = toUsBankOrder(record, {
+        requestorName: record.requestorName.trim() || displayName(user),
+      });
+      setPushed(await submitUsBankOrder(payload, { documents, autoMatch: true, accessToken }));
+    } catch (e) {
+      console.error("US Bank order failed", e);
+      setPushError(e instanceof Error ? e.message : "Could not create the US Bank order.");
+    } finally {
+      setPushing(false);
+    }
+  };
+
+  // Leaving the outcome screen is what finally clears the draft — until then the
+  // screen has to stay mounted (a null draft redirects to /scan).
+  const finish = (to: string) => {
+    setDraft(null);
+    navigate(to);
   };
 
   const discard = async () => {
@@ -348,8 +422,8 @@ export function Review() {
 
       {/* Discard is destructive — push it well clear of Save so it can't be hit by mistake. */}
       <div className="row wrap">
-        <button className="btn btn-primary btn-lg" onClick={save} disabled={saving}>
-          {saving ? "Saving…" : "Save record"}
+        <button className="btn btn-primary btn-lg" onClick={save} disabled={saving || pushing}>
+          {saving ? "Saving…" : pushing ? "Sending to US Bank…" : "Save record"}
         </button>
         <div className="spacer" />
         <button className="btn btn-ghost btn-lg" onClick={discard}>Discard</button>
