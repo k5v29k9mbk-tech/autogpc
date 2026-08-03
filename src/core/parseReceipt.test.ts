@@ -174,6 +174,87 @@ describe("parseLineItems", () => {
     expect(items[3].quantity).toBe("6");
     expect(items[3].unitPrice).toBe("4.25");
   });
+
+  it("joins a catalog-code description with the number line below it", () => {
+    const items = parseLineItems(
+      [
+        "Housewares",
+        "220V Featherweight P 011120236033",
+        "1 0 40.45 = 44.95",
+        "UNIT CHARGE (€10.00)",
+        "Trans Disc. -4.50",
+        "YOUR REFUND VALUE 40.45",
+        "TOTAL 0 40.45",
+        "MasterCard 40.45",
+      ].join("\n"),
+    );
+    expect(items).toEqual([
+      { description: "220V Featherweight P 011120236033", quantity: "1", unitPrice: "40.45", total: "44.95" },
+    ]);
+  });
+
+  it("does not join a department banner or header to the number line below it", () => {
+    // Lose the description line (it OCRs worst) and the banner must NOT take its
+    // place; likewise headers, phone lines, dates and footer codes.
+    expect(parseLineItems(["Housewares", "1 0 40.45 = 44.95"].join("\n"))).toEqual([]);
+    expect(
+      parseLineItems(
+        [
+          "Ramstein KMCC Mall",
+          "PHONE: +49(0)6371-4079 x103",
+          "6/24/2025 12:03 029297 7235100100-R136316234-186595",
+          "1 0 40.45 = 44.95",
+          "Authorization Code:041228",
+          "44.95",
+        ].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  // Every one of these invented a row under a looser version of the join rule.
+  // An ID line ending in a long number has the same shape as a catalog code, so
+  // the guard cannot be "ends in digits" alone. A phantom row carrying the
+  // receipt total is worse than the missing row this whole branch exists to fix.
+  it("never joins a payment or audit-block ID to the amount below it", () => {
+    const footers: [string, string][] = [
+      ["AUTH CODE 041228", "40.45"], // colon-free auth code — the common print
+      ["MERCHANT ID 000000487213", "40.45"],
+      ["Terminal-ID 68123456", "24.06.25"], // German EC footer: a DATE below
+      ["STORE 0821 REG 05 TRANS 148592", "68.42"],
+      ["PHONE 06371 4079300", "44.95"], // no hyphen — OCR drops it routinely
+      ["Survey Code 7235100100", "1 0.00"],
+      ["Trans 88241007", "62.48"],
+      ["Invoice 20250624", "119,00"],
+      ["Order Number 100045512", "149.99"],
+      ["Account 4421000012348273", "40.45"],
+      ["MEMBER 4001234567", "12.99"],
+    ];
+    for (const pair of footers) {
+      expect(parseLineItems(pair.join("\n")), pair[0]).toEqual([]);
+    }
+  });
+
+  // The register stamp, once thermal OCR reads its hyphens as spaces, ends in a
+  // 6-digit run and so passes the catalog-code test. Sitting directly above the
+  // column line it doesn't just add a junk row — it CONSUMES the real item's
+  // numbers, and the genuine row disappears. Worse than the original bug.
+  it("does not let a register stamp steal the item's number line", () => {
+    expect(
+      parseLineItems(
+        ["6/24/2025 12:03 029297 7235100100 R136316234 186595", "1 0 40.45 = 44.95"].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  it("consumes the number line exactly once", () => {
+    const items = parseLineItems(
+      ["WIDGET 12345678", "1 0 40.45 = 44.95", "EXTCORD ORNG 50FT 14.99"].join("\n"),
+    );
+    expect(items.map((i) => [i.description, i.total])).toEqual([
+      ["WIDGET 12345678", "44.95"],
+      ["EXTCORD ORNG 50FT", "14.99"],
+    ]);
+  });
 });
 
 describe("parseReceipt — full documents", () => {

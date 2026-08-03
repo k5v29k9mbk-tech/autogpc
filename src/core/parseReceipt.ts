@@ -362,8 +362,39 @@ export function parseLineItems(text: string): LineItem[] {
   // requiring two dropped most real rows. The optional trailing letters are the
   // tax-class flag receipts print after the price ("29.97 N", "8.98 T").
   const simpleRow = /^(.{3,48}?)\s+([€$£]?\s*\d[\d.,]*[.,]\d{2})\s*[A-Z]{0,2}$/;
+  // Two-line row (Exchange and other catalog-code layouts): the description and
+  // its catalog number print on one line, the qty/unit/extended columns on the
+  // next.
+  //
+  //   220V Featherweight P 011120236033
+  //   1     0    40.45   =        44.95
+  //
+  // Neither half can match on its own — the top has no price, the bottom no
+  // letters — so the item is invisible to every rule above. Joining them is the
+  // only way to see it, and joining is where phantom rows come from, so BOTH
+  // halves have to prove themselves:
+  //
+  //  - the top ends in a whitespace-separated catalog code (6+ digits, no
+  //    decimal separator), which is what a department banner ("Housewares")
+  //    lacks;
+  //  - the top is not a payment/audit-block line. "Ends in a long number" is
+  //    also the shape of every ID a receipt prints down there, and an auth code
+  //    or register stamp sitting above a column line would STEAL the real row's
+  //    numbers rather than merely add a junk one;
+  //  - the bottom is a full column set: a leading quantity and at least TWO
+  //    amounts (unit price and extended). One bare amount is never enough —
+  //    "AUTH CODE 041228" over "40.45" is a footer, not a purchase.
+  const catalogRow = /[A-Za-z].*\s\d{6,}$/;
+  // Whole-word IDs plus any date or clock time (the "6/24/2025 12:03 029297
+  // 7235100100 R136316234 186595" register stamp, once OCR reads its hyphens
+  // as spaces and it starts looking like a catalog code).
+  const footerIdRow =
+    /\b(auth|authorization|merchant|terminal|store|reg|register|trans|transaction|invoice|order|acct|account|phone|tel|fax|member|survey|batch|seq|ref|receipt|code|id)\b|\d{1,2}[:/.]\d{2}/i;
+  const columnsRow = /^\d{1,4}[\s\d.,=@xX*-]*\d[.,]\d{2}$/;
+  const money = /\d[\d.,]*[.,]\d{2}/g;
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     if (/\b(sub)?total|tax|vat|mwst|balance|amount\s*due|summe|gesamt|change|tender|cash|card/i.test(line)) {
       continue;
     }
@@ -392,7 +423,23 @@ export function parseLineItems(text: string): LineItem[] {
         unitPrice: null,
         total: normalizeAmount(s[2]),
       });
+      continue;
     }
+    // Nothing matched on this line alone — try it as the top half of a
+    // two-line row. The number line reads left to right as
+    // "qty ... unitPrice ... extended", so the last amount is the row total and
+    // the leading integer is the quantity ("1 0 40.45 = 44.95").
+    const next = lines[i + 1] ?? "";
+    if (!catalogRow.test(line) || footerIdRow.test(line) || !columnsRow.test(next)) continue;
+    const amounts = next.match(money) ?? [];
+    if (amounts.length < 2) continue;
+    items.push({
+      description: line,
+      quantity: next.match(/^(\d{1,4})\s/)?.[1] ?? null,
+      unitPrice: normalizeAmount(amounts[0] ?? ""),
+      total: normalizeAmount(amounts[amounts.length - 1] ?? ""),
+    });
+    i++; // the number line is consumed
   }
   return items.slice(0, 25);
 }
