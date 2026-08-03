@@ -3,11 +3,13 @@
 //
 // The clone's API contract:
 //   required : merchantName, requestorName
-//   stored   : amount (number), orderDate (YYYY-MM-DD), lineItems[]
-//                lineItems[] = { productCode, description, qty, unitCost, lineTotal }
-//   NOT stored by the clone yet (form-only): Emergency-Type Operation, 889
-//                Designation, Total/Line-Item Tax. Those stay on the record
-//                (record.usBank et al.) and surface as warnings here.
+//   promoted to columns : amount (number), orderDate (YYYY-MM-DD)
+//   everything else in the body is stored verbatim in the order's `details`
+//   JSONB and read back by the detail page as `details.<key>` — so the keys
+//   below must match ITS names, not ours, and any key we omit renders on that
+//   page as the literal string "null".
+//   Emergency-Type Operation has no field on the clone's form, so it stays on
+//   the record only.
 //
 // Pure and UI-free so it can be unit-tested and reused by a future iOS shell.
 
@@ -25,8 +27,30 @@ export type UsBankLineItem = {
   lineTotal: number | null;
 };
 
+/**
+ * The Create-Order form fields, keyed exactly as the clone's order-detail page
+ * reads them back (`d.<key>` in usbank-clone/public/app.js). Our record names
+ * them differently — this is the translation layer, and the only place the two
+ * vocabularies meet.
+ */
+export type UsBankOrderDetails = {
+  specialPreApproval: string;
+  delegatedAuthority: string;
+  prePurchApprovals: string;
+  section508: string;
+  requestToPurchase: string;
+  spendAnalysis: string;
+  requiredSource: string;
+  finalDelivery: string;
+  designation889: string;
+  totalTax: string;
+  lineItemTax: string;
+  sourceCurrency: string;
+  invoice: string;
+};
+
 /** Exactly what POST /api/orders accepts. */
-export type UsBankOrderPayload = {
+export type UsBankOrderPayload = UsBankOrderDetails & {
   merchantName: string;
   requestorName: string;
   amount: number;
@@ -237,8 +261,15 @@ export function toUsBankOrder(
   if (lineItems.length === 0)
     warnings.push("No line items extracted — add them before submitting if required.");
 
-  // Form-only fields the clone API can't store yet:
   warnings.push("Confirm the 889 representation below and attach the downloaded record.");
+
+  // The reviewer's Create-Order answers. Records saved before these fields
+  // existed have no `usBank` block — they'd land in US Bank as "null", so say so.
+  const ub = record.usBank;
+  if (!ub)
+    warnings.push(
+      "This record predates the US Bank order fields (Spend Analysis, Section 508, …) — they'll be blank in the order.",
+    );
 
   const payload: UsBankOrderPayload = {
     merchantName,
@@ -246,6 +277,20 @@ export function toUsBankOrder(
     amount,
     ...(iso ? { orderDate: iso } : {}),
     lineItems,
+    specialPreApproval: ub?.specialPreApproval ?? "",
+    delegatedAuthority: ub?.delegatedProcurementAuthority ?? "",
+    prePurchApprovals: ub?.prePurchaseApprovals ?? "",
+    section508: ub?.section508Consideration ?? "",
+    requestToPurchase: ub?.requestToPurchaseReceived ?? "",
+    spendAnalysis: ub?.spendAnalysis ?? "",
+    requiredSource: ub?.requiredSourceScreened ?? "",
+    finalDelivery: ub?.finalDeliveryOutsideUs ?? "",
+    designation889: record.designation889 ?? "",
+    totalTax: record.taxAmount ?? "0.00",
+    lineItemTax: ub?.lineItemTax ?? "0.00",
+    // The clone's own default label for USD; anything else is the OCONUS currency.
+    sourceCurrency: currency && currency !== "USD" ? currency : "U.S. Dollar",
+    invoice: record.invoiceNumber ?? "",
   };
 
   return { payload, warnings };

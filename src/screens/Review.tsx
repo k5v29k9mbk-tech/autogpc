@@ -90,6 +90,15 @@ export function Review() {
 
   if (!draft) return <Navigate to="/scan" replace />;
 
+  // Leaving the outcome screen is what finally clears the draft — until then the
+  // screen has to stay mounted (a null draft redirects to /scan). Declared above
+  // the outcome screen that calls it: a `const` below would still be in its TDZ
+  // when those buttons fire, and they'd throw instead of navigating.
+  const finish = (to: string) => {
+    setDraft(null);
+    navigate(to);
+  };
+
   // Post-save outcome: the record is stored and the US Bank push has run.
   if (pushed || pushError) {
     return (
@@ -193,13 +202,6 @@ export function Review() {
     } finally {
       setPushing(false);
     }
-  };
-
-  // Leaving the outcome screen is what finally clears the draft — until then the
-  // screen has to stay mounted (a null draft redirects to /scan).
-  const finish = (to: string) => {
-    setDraft(null);
-    navigate(to);
   };
 
   const discard = async () => {

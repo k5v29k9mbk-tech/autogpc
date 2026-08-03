@@ -13,9 +13,6 @@
 //   USBANK_API_BASE   e.g. https://test.autogpc.com
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-// Type-only import (erased at compile) — the wire shape has ONE owner,
-// src/lib/usbankOrder, instead of a second declaration that can drift.
-import type { UsBankLineItem } from "../src/lib/usbankOrder";
 
 const BASE = process.env.USBANK_API_BASE;
 
@@ -30,16 +27,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { merchantName, requestorName, amount, orderDate, lineItems, documents, autoMatch } =
-      (req.body ?? {}) as {
-        merchantName?: string;
-        requestorName?: string;
-        amount?: number;
-        orderDate?: string;
-        lineItems?: UsBankLineItem[];
-        documents?: { filename: string; contentType: string; dataBase64: string }[];
-        autoMatch?: boolean;
-      };
+    // Everything except the two transport-only keys is forwarded verbatim: the
+    // clone keeps the whole create-order body in its `details` JSONB, so a field
+    // this proxy doesn't name is a field that reads "null" on the order page.
+    const { documents, autoMatch, ...order } = (req.body ?? {}) as Record<string, unknown> & {
+      merchantName?: string;
+      requestorName?: string;
+      amount?: number;
+      documents?: { filename: string; contentType: string; dataBase64: string }[];
+      autoMatch?: boolean;
+    };
+    const { merchantName, requestorName, amount } = order;
     if (!merchantName) {
       res.status(400).json({ error: "bad_request", message: "merchantName is required." });
       return;
@@ -89,7 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orderRes = await fetch(`${BASE}/api/orders`, {
       method: "POST",
       headers: authHeaders,
-      body: JSON.stringify({ merchantName, requestorName: requestor, amount, orderDate, lineItems }),
+      body: JSON.stringify({ ...order, requestorName: requestor }),
     });
     const created = (await orderRes.json().catch(() => ({}))) as {
       order?: { controlNumber?: string; merchantName?: string; amount?: number };
